@@ -1,0 +1,22 @@
+# Generated files
+.gradle/
+.idea/
+*.iml
+local.properties
+build/
+**/build/
+captures/
+
+# Keystore
+*.jks
+*.keystore
+
+# Log files
+*.log
+
+# Kotlin kapt generated
+**/generated/
+
+# OS
+.DS_Store
+Thumbs.db

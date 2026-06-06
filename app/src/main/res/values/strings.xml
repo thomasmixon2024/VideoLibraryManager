@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Video Library Manager</string>
+    <string name="grant_permission">Grant Storage Permission</string>
+    <string name="permission_rationale">This app needs access to your Videos folder to organize your library.</string>
+</resources>
