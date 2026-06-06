@@ -8,77 +8,97 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import com.example.videolibrarymanager.data.VideoDatabase
-import com.example.videolibrarymanager.data.VideoRepository
-import com.example.videolibrarymanager.service.VideoScannerService
-import com.example.videolibrarymanager.ui.AppNavigation
-import com.example.videolibrarymanager.ui.PermissionScreen
+import com.example.videolibrarymanager.ui.MainNavigationShell
 import com.example.videolibrarymanager.ui.VideoViewModel
+import com.example.videolibrarymanager.ui.theme.VideoLibraryManagerTheme
 import com.example.videolibrarymanager.util.BugLogger
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
+
+    private val viewModel: VideoViewModel by viewModels()
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         if (isGranted) {
-            BugLogger.info(TAG, "Storage permission GRANTED by user")
+            BugLogger.info(TAG, "Storage permission granted by user callback.")
             startVideoScanner()
         } else {
-            BugLogger.warn(TAG, "Storage permission DENIED by user")
+            BugLogger.warn(TAG, "Storage permission denied by user callback.")
         }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        BugLogger.info(TAG, "onCreate — savedInstanceState=${savedInstanceState != null}")
-
-        val db = VideoDatabase.getDatabase(this)
-        BugLogger.debug(TAG, "Room DB opened: video_library.db v${VideoDatabase.DB_VERSION}")
-
-        val repository = VideoRepository(db.videoDao())
-        val viewModel = VideoViewModel(repository)
+        BugLogger.info(TAG, "onCreate initialized.")
 
         setContent {
-            MaterialTheme {
-                Surface {
-                    if (hasStoragePermission()) {
-                        BugLogger.debug(TAG, "Permission already granted — showing AppNavigation")
-                        AppNavigation(viewModel = viewModel)
-                    } else {
-                        BugLogger.info(TAG, "No storage permission — showing PermissionScreen")
-                        PermissionScreen(onGrantClicked = { requestStoragePermission() })
-                    }
+            VideoLibraryManagerTheme {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    MainNavigationShell(
+                        viewModel = viewModel,
+                        onVideoClick = { video ->
+                            BugLogger.debug(TAG, "Selected Video Playback Event: \")
+                        },
+                        onClearDatabase = {
+                            lifecycleScope.launch(Dispatchers.IO) {
+                                try {
+                                    VideoDatabase.getDatabase(this@MainActivity).videoDao().clearAllVideos()
+                                    BugLogger.info(TAG, "Video catalog database cleared by user preference configuration.")
+                                } catch (e: Exception) {
+                                    BugLogger.error(TAG, "Failed to completely wipe the catalog database", e)
+                                }
+                            }
+                        }
+                    )
                 }
             }
         }
 
-        if (hasStoragePermission()) startVideoScanner()
+        if (hasStoragePermission()) {
+            startVideoScanner()
+        } else {
+            requestStoragePermission()
+        }
     }
 
-    override fun onResume()  { super.onResume();  BugLogger.debug(TAG, "onResume")  }
-    override fun onPause()   { super.onPause();   BugLogger.debug(TAG, "onPause")   }
-    override fun onDestroy() { super.onDestroy(); BugLogger.info(TAG, "onDestroy")  }
+    override fun onResume()  { super.onResume();  BugLogger.debug(TAG, "onResume called")  }
+    override fun onPause()   { super.onPause();   BugLogger.debug(TAG, "onPause called")   }
+    override fun onDestroy() { super.onDestroy(); BugLogger.info(TAG, "onDestroy called")  }
 
     private fun requestStoragePermission() {
         val perm = storagePermission()
-        BugLogger.info(TAG, "Requesting permission: $perm")
+        BugLogger.info(TAG, "Requesting permission token: \")
         permissionLauncher.launch(perm)
     }
 
     private fun startVideoScanner() {
-        BugLogger.info(TAG, "Starting VideoScannerService (foreground)")
-        val intent = Intent(this, VideoScannerService::class.java)
-        ContextCompat.startForegroundService(this, intent)
+        BugLogger.info(TAG, "Spawning VideoScannerService background foreground context.")
+        try {
+            val intent = Intent(this, Class.forName("com.example.videolibrarymanager.service.VideoScannerService"))
+            ContextCompat.startForegroundService(this, intent)
+        } catch (e: ClassNotFoundException) {
+            BugLogger.error(TAG, "VideoScannerService definition missing from package context.", e)
+        }
     }
 
     private fun hasStoragePermission(): Boolean {
         val perm = storagePermission()
         val granted = ContextCompat.checkSelfPermission(this, perm) == PackageManager.PERMISSION_GRANTED
-        BugLogger.debug(TAG, "hasStoragePermission($perm) = $granted")
+        BugLogger.debug(TAG, "Permission verification evaluation state for (\) = \")
         return granted
     }
 
