@@ -1,0 +1,95 @@
+{
+    // Video Library Manager - Android Jetpack Compose App Debug Configuration
+    // For Android development with Gradle, ADB, and Android Emulator
+    // Documentation: https://developer.android.com/studio/debug
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Build and Run Debug APK",
+            "type": "node",
+            "request": "launch",
+            "skipFiles": ["<node_internals>/**"],
+            "runtimeExecutable": "${workspaceFolder}/gradlew",
+            "runtimeArgs": ["installDebug"],
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen"
+        },
+        {
+            "name": "Build Debug APK",
+            "type": "node",
+            "request": "launch",
+            "skipFiles": ["<node_internals>/**"],
+            "runtimeExecutable": "${workspaceFolder}/gradlew",
+            "runtimeArgs": ["assembleDebug"],
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen"
+        },
+        {
+            "name": "Run Unit Tests",
+            "type": "node",
+            "request": "launch",
+            "skipFiles": ["<node_internals>/**"],
+            "runtimeExecutable": "${workspaceFolder}/gradlew",
+            "runtimeArgs": ["test"],
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen"
+        },
+        {
+            "name": "Run Instrumented Tests (Connected Device)",
+            "type": "node",
+            "request": "launch",
+            "skipFiles": ["<node_internals>/**"],
+            "runtimeExecutable": "${workspaceFolder}/gradlew",
+            "runtimeArgs": ["connectedAndroidTest"],
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen"
+        },
+        {
+            "name": "ADB Logcat (VLM tags)",
+            "type": "node",
+            "request": "launch",
+            "skipFiles": ["<node_internals>/**"],
+            "runtimeExecutable": "adb",
+            "runtimeArgs": [
+                "logcat",
+                "-s",
+                "MainActivity:V VideoScannerService:V VideoScanner:V VideoViewModel:V VideoDatabase:V BugLogger:V"
+            ],
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen"
+        },
+        {
+            "name": "Pull Run Log from Device",
+            "type": "node",
+            "request": "launch",
+            "skipFiles": ["<node_internals>/**"],
+            "runtimeExecutable": "bash",
+            "runtimeArgs": [
+                "-c",
+                "adb shell run-as com.example.videolibrarymanager cat files/vlm_runlog.txt > vlm_runlog_device.txt && echo 'Log saved to vlm_runlog_device.txt' && cat vlm_runlog_device.txt"
+            ],
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen"
+        },
+        {
+            "name": "Clear App Data",
+            "type": "node",
+            "request": "launch",
+            "skipFiles": ["<node_internals>/**"],
+            "runtimeExecutable": "adb",
+            "runtimeArgs": ["shell", "pm", "clear", "com.example.videolibrarymanager"],
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen"
+        },
+        {
+            "name": "Uninstall App",
+            "type": "node",
+            "request": "launch",
+            "skipFiles": ["<node_internals>/**"],
+            "runtimeExecutable": "adb",
+            "runtimeArgs": ["uninstall", "com.example.videolibrarymanager"],
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen"
+        }
+    ]
+}

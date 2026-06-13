@@ -15,7 +15,7 @@ import androidx.compose.ui.unit.dp
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    onClearDatabaseClick: () -> Unit,
+    onClearDatabase: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var autoScanEnabled by remember { mutableStateOf(true) }
@@ -109,7 +109,7 @@ fun SettingsScreen(
                     TextButton(
                         onClick = {
                             showDeleteConfirmationDialog = false
-                            onClearDatabaseClick()
+                            onClearDatabase()
                         }
                     ) {
                         Text("Clear All", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)

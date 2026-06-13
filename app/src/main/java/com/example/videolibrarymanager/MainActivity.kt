@@ -14,10 +14,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import com.example.videolibrarymanager.data.VideoDatabase
+import com.example.videolibrarymanager.data.VideoRepository
 import com.example.videolibrarymanager.ui.MainNavigationShell
 import com.example.videolibrarymanager.ui.VideoViewModel
+import com.example.videolibrarymanager.ui.VideoViewModelFactory
 import com.example.videolibrarymanager.ui.theme.VideoLibraryManagerTheme
 import com.example.videolibrarymanager.util.BugLogger
 import kotlinx.coroutines.Dispatchers
@@ -25,7 +28,11 @@ import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
-    private val viewModel: VideoViewModel by viewModels()
+    private val viewModel: VideoViewModel by viewModels {
+        val database = VideoDatabase.getDatabase(this)
+        val repository = VideoRepository(database.videoDao())
+        VideoViewModelFactory(repository)
+    }
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()

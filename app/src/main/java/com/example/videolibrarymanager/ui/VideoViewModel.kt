@@ -74,10 +74,10 @@ class VideoViewModel(
         BugLogger.debug(TAG, "onCleared")
     }
 
-    companion object { private const val TAG = "VideoViewModel" }
-
-    fun searchVideos(query: String): kotlinx.coroutines.flow.Flow<List<com.example.videolibrarymanager.data.VideoEntity>> {
-        return videoDao.searchVideos(query)
+    fun searchVideos(query: String): Flow<List<VideoEntity>> {
+        return repository.searchVideos(query)
     }
+
+    companion object { private const val TAG = "VideoViewModel" }
 }
 

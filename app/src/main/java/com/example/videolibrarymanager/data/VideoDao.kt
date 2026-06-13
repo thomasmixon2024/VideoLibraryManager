@@ -33,4 +33,7 @@ interface VideoDao {
 
     @Query("DELETE FROM videos WHERE path = :path")
     suspend fun deleteByPath(path: String)
+
+    @Query("DELETE FROM videos")
+    suspend fun clearAllVideos()
 }

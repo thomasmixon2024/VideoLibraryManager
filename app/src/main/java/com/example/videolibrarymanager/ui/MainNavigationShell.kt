@@ -73,7 +73,7 @@ fun MainNavigationShell(
                 VideoSearchScreen(viewModel = viewModel, onVideoClick = onVideoClick)
             }
             composable(Screen.Settings.route) {
-                SettingsScreen(onClearDatabaseClick = onClearDatabase)
+                SettingsScreen(onClearDatabase = onClearDatabase)
             }
         }
     }
