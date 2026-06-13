@@ -58,7 +58,7 @@ class MainActivity : ComponentActivity() {
                     MainNavigationShell(
                         viewModel = viewModel,
                         onVideoClick = { video ->
-                            BugLogger.debug(TAG, "Selected Video Playback Event: \")
+                            BugLogger.debug(TAG, "Selected Video Playback Event: ${video.path}")
                         },
                         onClearDatabase = {
                             lifecycleScope.launch(Dispatchers.IO) {
@@ -88,7 +88,7 @@ class MainActivity : ComponentActivity() {
 
     private fun requestStoragePermission() {
         val perm = storagePermission()
-        BugLogger.info(TAG, "Requesting permission token: \")
+        BugLogger.info(TAG, "Requesting storage permission for: $perm")
         permissionLauncher.launch(perm)
     }
 
@@ -105,7 +105,7 @@ class MainActivity : ComponentActivity() {
     private fun hasStoragePermission(): Boolean {
         val perm = storagePermission()
         val granted = ContextCompat.checkSelfPermission(this, perm) == PackageManager.PERMISSION_GRANTED
-        BugLogger.debug(TAG, "Permission verification evaluation state for (\) = \")
+        BugLogger.debug(TAG, "Permission verification evaluation state for ($perm) = $granted")
         return granted
     }
 
