@@ -8,6 +8,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -65,8 +66,8 @@ fun MainNavigationShell(
             composable(Screen.Home.route) {
                 // Placeholder fallback text for your main catalog layout feed component
                 Text(
-                    text = "Main Video Catalog Feed Grid goes here.", 
-                    modifier = Modifier.padding(androidx.compose.ui.unit.dp.apply { 16 })
+                    text = "Main Video Catalog Feed Grid goes here.",
+                    modifier = Modifier.padding(16.dp)
                 )
             }
             composable(Screen.Search.route) {

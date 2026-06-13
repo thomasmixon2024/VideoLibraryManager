@@ -35,7 +35,7 @@ fun VideoSearchScreen(
     
     val searchResults by remember(searchQuery) {
         if (searchQuery.isBlank()) {
-            viewModel.allVideos
+            viewModel.videos
         } else {
             viewModel.searchVideos(searchQuery)
         }
