@@ -2,7 +2,7 @@
 
 An Android app that scans your device for video files, stores metadata in a local Room database, and displays a clean Jetpack Compose UI. Includes a persistent **run/bug log** accessible from within the app.
 
-[![Android CI](https://github.com/your-org/VideoLibraryManager/actions/workflows/android.yml/badge.svg)](https://github.com/your-org/VideoLibraryManager/actions/workflows/android.yml)
+[![Android CI](https://github.com/thomasmixon2024/VideoLibraryManager/actions/workflows/android.yml/badge.svg)](https://github.com/thomasmixon2024/VideoLibraryManager/actions/workflows/android.yml)
 
 ---
 
@@ -20,10 +20,13 @@ An Android app that scans your device for video files, stores metadata in a loca
 | In-app log viewer (Settings → View Run Log) | ✅ |
 | Log file sharing via share sheet | ✅ |
 | MediaStore scanner (full query) | ✅ |
-| FFmpeg Kit metadata extraction | 🔜 TODO |
-| Thumbnail generation | 🔜 TODO |
-| Search UI (FTS connected) | 🔜 TODO |
-| Settings screen (scan paths, categories) | 🔜 TODO |
+| Native metadata extraction (MediaMetadataRetriever) | ✅ |
+| Thumbnail generation | ✅ |
+| ExoPlayer video playback | ✅ |
+| Persistent settings (DataStore) | ✅ |
+| Search UI (FTS connected) — prefix wildcard via `VideoRepository` | ✅ |
+| Scan folder filtering (Custom Scan Paths via MediaStore Buckets) | ✅ |
+| Category customization (Tag-based category updates preserved across scans) | ✅ |
 
 ---
 
@@ -34,8 +37,10 @@ An Android app that scans your device for video files, stores metadata in a loca
 | UI | Jetpack Compose + Material3 | BOM 2024.10 |
 | Navigation | Navigation Compose | 2.8.4 |
 | ViewModel | Lifecycle ViewModel + StateFlow | 2.8.7 |
-| Database | Room + FTS5 | 2.6.1 |
-| Scanner | MediaStore API | — |
+| Database | Room + FTS4 | 2.7.1 |
+| Scanner | MediaStore API + MediaMetadataRetriever | — |
+| Preferences | DataStore Preferences | 1.1.1 |
+| Playback | Media3 ExoPlayer | 1.5.0 |
 | Async | Kotlin Coroutines | 1.9.0 |
 | Build | AGP | 8.7.0 |
 | Kotlin | — | 2.0.0 |
@@ -83,10 +88,12 @@ app/src/main/java/com/example/videolibrarymanager/
 │   ├── VideoViewModel.kt        # StateFlow ViewModel
 │   ├── HomeScreen.kt            # Video list + rich cards
 │   ├── SettingsScreen.kt        # Settings menu
+│   ├── VideoPlayerScreen.kt     # ExoPlayer playback screen
 │   ├── LogViewerScreen.kt       # In-app run/bug log viewer
 │   ├── PermissionScreen.kt      # Permission request UI
-│   └── Navigation.kt            # NavHost (home / settings / log_viewer)
+│   └── MainNavigationShell.kt   # NavHost (home / search / settings / player)
 └── util/
+    ├── VideoMetadataHelper.kt   # Native video metadata & thumbnail extraction
     └── BugLogger.kt             # Persistent structured logger
 ```
 

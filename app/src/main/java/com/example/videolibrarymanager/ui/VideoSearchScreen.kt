@@ -20,8 +20,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil.compose.rememberAsyncImagePainter
+import coil3.compose.rememberAsyncImagePainter
 import com.example.videolibrarymanager.data.VideoEntity
+import com.example.videolibrarymanager.util.Formatters
 import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -31,15 +32,8 @@ fun VideoSearchScreen(
     onVideoClick: (VideoEntity) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var searchQuery by remember { mutableStateOf("") }
-    
-    val searchResults by remember(searchQuery) {
-        if (searchQuery.isBlank()) {
-            viewModel.videos
-        } else {
-            viewModel.searchVideos(searchQuery)
-        }
-    }.collectAsStateWithLifecycle(initialValue = emptyList())
+    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
+    val searchResults by viewModel.searchResults.collectAsStateWithLifecycle(initialValue = emptyList())
 
     Column(
         modifier = modifier
@@ -48,13 +42,13 @@ fun VideoSearchScreen(
     ) {
         OutlinedTextField(
             value = searchQuery,
-            onValueChange = { searchQuery = it },
+            onValueChange = { viewModel.setSearchQuery(it) },
             modifier = Modifier.fillMaxWidth(),
             placeholder = { Text("Search local video catalog...") },
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search Icon") },
             trailingIcon = {
                 if (searchQuery.isNotEmpty()) {
-                    IconButton(onClick = { searchQuery = "" }) {
+                    IconButton(onClick = { viewModel.setSearchQuery("") }) {
                         Icon(Icons.Default.Clear, contentDescription = "Clear Search Input")
                     }
                 }
@@ -164,7 +158,7 @@ fun VideoResultRow(
                     }
                     if (video.duration > 0) {
                         Text(
-                            text = formatDuration(video.duration),
+                            text = Formatters.formatDuration(video.duration),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -175,9 +169,4 @@ fun VideoResultRow(
     }
 }
 
-private fun formatDuration(ms: Long): String {
-    val totalSeconds = ms / 1000
-    val minutes = totalSeconds / 60
-    val seconds = totalSeconds % 60
-    return String.format("%d:%02d", minutes, seconds)
-}
+

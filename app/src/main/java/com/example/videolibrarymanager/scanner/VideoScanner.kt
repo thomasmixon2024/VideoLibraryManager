@@ -7,19 +7,22 @@ import com.example.videolibrarymanager.util.BugLogger
 
 /**
  * VideoScanner — queries MediaStore for all video files on the device.
- *
- * TODO: Integrate FFmpeg Kit to extract precise duration, resolution,
- *       codec info, and generate thumbnails for each video.
- * TODO: Add SHA-256 checksum generation for corrupt-file detection.
+ * Optionally filters to a specific set of MediaStore bucket (folder) names.
  */
 class VideoScanner(private val context: Context) {
 
     /**
-     * Returns all video files found via MediaStore.
+     * Returns video files found via MediaStore, optionally limited to [includedFolders].
+     * [includedFolders] — set of BUCKET_DISPLAY_NAME strings to allow.
+     *                      Empty set means "include all folders" (default, open filter).
      * Requires READ_MEDIA_VIDEO (API 33+) or READ_EXTERNAL_STORAGE (≤ API 32).
      */
-    fun scanAll(): List<VideoEntity> {
-        BugLogger.debug(TAG, "scanAll() — querying MediaStore.Video.Media.EXTERNAL_CONTENT_URI")
+    suspend fun scanAll(
+        limit: Int = 500,
+        includedFolders: Set<String> = emptySet()
+    ): List<VideoEntity> {
+        val folderDesc = if (includedFolders.isEmpty()) "all" else includedFolders.joinToString()
+        BugLogger.debug(TAG, "scanAll() — limit=$limit folders=$folderDesc")
         val results = mutableListOf<VideoEntity>()
 
         val projection = arrayOf(
@@ -45,15 +48,11 @@ class VideoScanner(private val context: Context) {
 
                 val idxName     = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DISPLAY_NAME)
                 val idxData     = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATA)
-                val idxDuration = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DURATION)
-                val idxSize     = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.SIZE)
                 val idxDate     = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATE_ADDED)
                 val idxBucket   = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.BUCKET_DISPLAY_NAME)
-                val idxHeight   = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.HEIGHT)
-                val idxWidth    = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.WIDTH)
 
                 var skipped = 0
-                while (cursor.moveToNext()) {
+                while (cursor.moveToNext() && results.size < limit) {
                     val path = cursor.getString(idxData)
                     if (path.isNullOrBlank()) {
                         skipped++
@@ -61,20 +60,47 @@ class VideoScanner(private val context: Context) {
                         continue
                     }
 
-                    val width  = cursor.getInt(idxWidth)
-                    val height = cursor.getInt(idxHeight)
                     val name   = cursor.getString(idxName) ?: "Unknown"
                     val bucket = cursor.getString(idxBucket) ?: "Uncategorized"
 
-                    results += VideoEntity(
-                        name       = name,
-                        path       = path,
-                        category   = bucket,
-                        duration   = cursor.getLong(idxDuration),
-                        size       = cursor.getLong(idxSize),
-                        resolution = if (width > 0 && height > 0) "${width}x${height}" else "",
-                        dateAdded  = cursor.getLong(idxDate) * 1000L, // MediaStore gives seconds → ms
+                    // Apply folder filter — skip if bucket not in the allowed set
+                    if (includedFolders.isNotEmpty() && bucket !in includedFolders) {
+                        skipped++
+                        continue
+                    }
+
+                    val date   = cursor.getLong(idxDate) * 1000L
+
+                    // Extract precise metadata natively. Do not compute checksum on every scan,
+                    // because it is expensive and not currently used by the app's workflows.
+                    val metadata = com.example.videolibrarymanager.util.VideoMetadataHelper.processVideo(
+                        context,
+                        path,
+                        calculateChecksum = false
                     )
+                    
+                    if (metadata != null) {
+                        results += VideoEntity(
+                            name       = name,
+                            path       = path,
+                            category   = bucket,
+                            duration   = metadata.durationMs,
+                            size       = java.io.File(path).length(),
+                            resolution = if (metadata.width > 0 && metadata.height > 0) "${metadata.width}x${metadata.height}" else "",
+                            dateAdded  = date,
+                            thumbnailPath = metadata.thumbnailPath,
+                            checksum   = metadata.checksum
+                        )
+                    } else {
+                        // Mark as corrupt if we couldn't process it
+                        results += VideoEntity(
+                            name       = name,
+                            path       = path,
+                            category   = bucket,
+                            isCorrupt  = true,
+                            errorMessage = "Failed to process native metadata"
+                        )
+                    }
                 }
 
                 BugLogger.info(TAG,

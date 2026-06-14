@@ -8,21 +8,23 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 
-sealed class Screen(val route: String, val title: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
+sealed class Screen(val route: String, val title: String, val icon: androidx.compose.ui.graphics.vector.ImageVector? = null) {
     object Home : Screen("home", "Catalog", Icons.Default.Home)
     object Search : Screen("search", "Search", Icons.Default.Search)
     object Settings : Screen("settings", "Settings", Icons.Default.Settings)
+    object Player : Screen("player/{encodedPath}", "Player") {
+        fun createRoute(path: String) = "player/${java.net.URLEncoder.encode(path, "UTF-8")}"
+    }
 }
 
 @Composable
 fun MainNavigationShell(
     viewModel: VideoViewModel,
-    onVideoClick: (com.example.videolibrarymanager.data.VideoEntity) -> Unit,
+    settingsViewModel: com.example.videolibrarymanager.ui.SettingsViewModel,
     onClearDatabase: () -> Unit
 ) {
     val navController = rememberNavController()
@@ -35,25 +37,31 @@ fun MainNavigationShell(
         }
     }
 
+    val showBottomBar = currentRoute != Screen.Player.route
+
     Scaffold(
         bottomBar = {
-            NavigationBar {
-                val items = listOf(Screen.Home, Screen.Search, Screen.Settings)
-                items.forEach { screen ->
-                    NavigationBarItem(
-                        icon = { Icon(screen.icon, contentDescription = screen.title) },
-                        label = { Text(screen.title) },
-                        selected = currentRoute == screen.route,
-                        onClick = {
-                            if (currentRoute != screen.route) {
-                                navController.navigate(screen.route) {
-                                    popUpTo(navController.graph.startDestinationId) { saveState = true }
-                                    launchSingleTop = true
-                                    restoreState = true
+            if (showBottomBar) {
+                NavigationBar {
+                    val items = listOf(Screen.Home, Screen.Search, Screen.Settings)
+                    items.forEach { screen ->
+                        if (screen.icon != null) {
+                            NavigationBarItem(
+                                icon = { Icon(screen.icon, contentDescription = screen.title) },
+                                label = { Text(screen.title) },
+                                selected = currentRoute == screen.route,
+                                onClick = {
+                                    if (currentRoute != screen.route) {
+                                        navController.navigate(screen.route) {
+                                            popUpTo(navController.graph.startDestinationId) { saveState = true }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
+                                    }
                                 }
-                            }
+                            )
                         }
-                    )
+                    }
                 }
             }
         }
@@ -63,18 +71,45 @@ fun MainNavigationShell(
             startDestination = Screen.Home.route,
             modifier = Modifier.padding(innerPadding)
         ) {
+            val onVideoClick: (com.example.videolibrarymanager.data.VideoEntity) -> Unit = { video ->
+                navController.navigate(Screen.Player.createRoute(video.path)) {
+                    launchSingleTop = true
+                }
+            }
+
             composable(Screen.Home.route) {
-                // Placeholder fallback text for your main catalog layout feed component
-                Text(
-                    text = "Main Video Catalog Feed Grid goes here.",
-                    modifier = Modifier.padding(16.dp)
+                HomeScreen(
+                    viewModel            = viewModel,
+                    onNavigateToSettings = {
+                        navController.navigate(Screen.Settings.route) {
+                            launchSingleTop = true
+                            restoreState    = true
+                        }
+                    },
+                    onVideoClick = onVideoClick
                 )
             }
             composable(Screen.Search.route) {
                 VideoSearchScreen(viewModel = viewModel, onVideoClick = onVideoClick)
             }
             composable(Screen.Settings.route) {
-                SettingsScreen(onClearDatabase = onClearDatabase)
+                SettingsScreen(
+                    settingsViewModel = settingsViewModel,
+                    videoViewModel    = viewModel,
+                    onClearDatabase   = onClearDatabase
+                )
+            }
+            composable(
+                route = Screen.Player.route,
+                arguments = listOf(androidx.navigation.navArgument("encodedPath") { type = androidx.navigation.NavType.StringType })
+            ) { backStackEntry ->
+                val path = backStackEntry.arguments?.getString("encodedPath")?.let { java.net.URLDecoder.decode(it, "UTF-8") }
+                if (path != null) {
+                    VideoPlayerScreen(
+                        videoPath = path,
+                        onNavigateUp = { navController.popBackStack() }
+                    )
+                }
             }
         }
     }

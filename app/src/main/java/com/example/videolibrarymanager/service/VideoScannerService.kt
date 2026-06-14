@@ -48,33 +48,55 @@ class VideoScannerService : Service() {
         val startMs = System.currentTimeMillis()
         BugLogger.info(TAG, "─── Scan cycle started ───")
         try {
-            val dao     = VideoDatabase.getDatabase(applicationContext).videoDao()
+            val database = VideoDatabase.getDatabase(applicationContext)
+            val repository = com.example.videolibrarymanager.data.VideoRepository(database.videoDao())
             val scanner = VideoScanner(applicationContext)
+            val settings = com.example.videolibrarymanager.data.SettingsRepository.getInstance(applicationContext)
 
-            BugLogger.info(TAG, "Running MediaStore scan…")
-            val videos = withContext(Dispatchers.IO) { scanner.scanAll() }
-            BugLogger.info(TAG, "MediaStore returned ${videos.size} video(s)")
+            val autoScan = settings.autoScanEnabled.first()
+            val skipCorrupt = settings.skipCorruptVideos.first()
+            val scanLimit = settings.scanLimit.first().toInt()
+            val includedFolders = settings.includedFolders.first()
 
-            if (videos.isEmpty()) {
-                BugLogger.warn(TAG, "No videos found — device may have no media or permission was revoked")
+            if (!autoScan) {
+                BugLogger.info(TAG, "Auto-scan disabled by user preferences. Exiting.")
+                return
             }
 
-            var inserted = 0
-            var errors   = 0
-            videos.forEach { v ->
-                try {
-                    dao.insert(v)
-                    inserted++
-                    BugLogger.debug(TAG, "Inserted: ${v.name} (${v.path})")
-                } catch (e: Exception) {
-                    errors++
-                    BugLogger.error(TAG, "Failed to insert ${v.path}", e)
+            BugLogger.info(TAG, "Running MediaStore scan with limit $scanLimit, folders=${if (includedFolders.isEmpty()) "all" else includedFolders}…")
+            var videos = withContext(Dispatchers.IO) { scanner.scanAll(scanLimit, includedFolders) }
+            BugLogger.info(TAG, "MediaStore returned ${videos.size} video(s)")
+            
+            if (skipCorrupt) {
+                val initialSize = videos.size
+                videos = videos.filter { !it.isCorrupt }
+                if (initialSize != videos.size) {
+                    BugLogger.info(TAG, "Skipped ${initialSize - videos.size} corrupt videos based on preferences")
                 }
             }
 
-            val total   = dao.getVideoCount().first()
+            if (videos.isEmpty()) {
+                BugLogger.warn(TAG, "No valid videos found to insert.")
+            }
+
+            if (videos.isNotEmpty()) {
+                val existingVideos = repository.getAllVideos().first()
+                val pathMap = existingVideos.associateBy { it.path }
+                val mergedVideos = videos.map { scanned ->
+                    val existing = pathMap[scanned.path]
+                    if (existing != null) {
+                        scanned.copy(id = existing.id, category = existing.category)
+                    } else {
+                        scanned
+                    }
+                }
+                repository.insertAll(mergedVideos)
+                BugLogger.info(TAG, "Bulk inserted/replaced ${mergedVideos.size} videos (preserved categories)")
+            }
+
+            val total   = repository.getVideoCount().first()
             val elapsed = System.currentTimeMillis() - startMs
-            BugLogger.info(TAG, "Scan complete — inserted=$inserted errors=$errors total_in_db=$total elapsed=${elapsed}ms")
+            BugLogger.info(TAG, "Scan complete — scanned=${videos.size} total_in_db=$total elapsed=${elapsed}ms")
 
         } catch (e: SecurityException) {
             BugLogger.error(TAG, "SecurityException — permission likely revoked at runtime", e)
