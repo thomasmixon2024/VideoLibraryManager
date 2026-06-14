@@ -11,12 +11,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.videolibrarymanager.data.VideoEntity
+import com.example.videolibrarymanager.util.Formatters
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     viewModel: VideoViewModel,
-    onNavigateToSettings: () -> Unit
+    onNavigateToSettings: () -> Unit,
+    onVideoClick: (VideoEntity) -> Unit
 ) {
     val videos     by viewModel.videos.collectAsStateWithLifecycle()
     val isLoading  by viewModel.isLoading.collectAsStateWithLifecycle()
@@ -42,24 +44,24 @@ fun HomeScreen(
                 isLoading  -> CircularProgressIndicator(Modifier.align(Alignment.Center))
                 error != null -> ErrorState(error = error!!, onRetry = viewModel::retry)
                 videos.isEmpty() -> EmptyState()
-                else -> VideoList(videos)
+                else -> VideoList(videos, onVideoClick)
             }
         }
     }
 }
 
 @Composable
-fun VideoList(videos: List<VideoEntity>) {
+fun VideoList(videos: List<VideoEntity>, onVideoClick: (VideoEntity) -> Unit) {
     LazyColumn(contentPadding = PaddingValues(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         items(videos, key = { it.id }) { video ->
-            VideoCard(video)
+            VideoCard(video, onClick = { onVideoClick(video) })
         }
     }
 }
 
 @Composable
-fun VideoCard(video: VideoEntity) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+fun VideoCard(video: VideoEntity, onClick: () -> Unit) {
+    Card(modifier = Modifier.fillMaxWidth(), onClick = onClick) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text(
                 text     = video.name,
@@ -72,8 +74,8 @@ fun VideoCard(video: VideoEntity) {
                 text  = buildString {
                     append(video.category)
                     if (video.resolution.isNotEmpty()) append(" • ${video.resolution}")
-                    if (video.duration > 0) append(" • ${formatDuration(video.duration)}")
-                    if (video.size > 0) append(" • ${formatSize(video.size)}")
+                    if (video.duration > 0) append(" • ${Formatters.formatDuration(video.duration)}")
+                    if (video.size > 0) append(" • ${Formatters.formatSize(video.size)}")
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -115,19 +117,4 @@ fun ErrorState(error: String, onRetry: () -> Unit) {
     }
 }
 
-// ── Formatting helpers ────────────────────────────────────────────────────────
 
-private fun formatDuration(ms: Long): String {
-    val totalSec = ms / 1000
-    val h = totalSec / 3600
-    val m = (totalSec % 3600) / 60
-    val s = totalSec % 60
-    return if (h > 0) "%d:%02d:%02d".format(h, m, s) else "%d:%02d".format(m, s)
-}
-
-private fun formatSize(bytes: Long): String = when {
-    bytes >= 1_073_741_824L -> "%.1f GB".format(bytes / 1_073_741_824.0)
-    bytes >= 1_048_576L     -> "%.1f MB".format(bytes / 1_048_576.0)
-    bytes >= 1_024L         -> "%.0f KB".format(bytes / 1_024.0)
-    else                    -> "$bytes B"
-}

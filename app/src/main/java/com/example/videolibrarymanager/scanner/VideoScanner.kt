@@ -18,8 +18,8 @@ class VideoScanner(private val context: Context) {
      * Returns all video files found via MediaStore.
      * Requires READ_MEDIA_VIDEO (API 33+) or READ_EXTERNAL_STORAGE (≤ API 32).
      */
-    fun scanAll(): List<VideoEntity> {
-        BugLogger.debug(TAG, "scanAll() — querying MediaStore.Video.Media.EXTERNAL_CONTENT_URI")
+    suspend fun scanAll(limit: Int = 500): List<VideoEntity> {
+        BugLogger.debug(TAG, "scanAll() — querying MediaStore.Video.Media.EXTERNAL_CONTENT_URI limit=$limit")
         val results = mutableListOf<VideoEntity>()
 
         val projection = arrayOf(
@@ -45,15 +45,11 @@ class VideoScanner(private val context: Context) {
 
                 val idxName     = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DISPLAY_NAME)
                 val idxData     = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATA)
-                val idxDuration = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DURATION)
-                val idxSize     = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.SIZE)
                 val idxDate     = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATE_ADDED)
                 val idxBucket   = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.BUCKET_DISPLAY_NAME)
-                val idxHeight   = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.HEIGHT)
-                val idxWidth    = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.WIDTH)
 
                 var skipped = 0
-                while (cursor.moveToNext()) {
+                while (cursor.moveToNext() && results.size < limit) {
                     val path = cursor.getString(idxData)
                     if (path.isNullOrBlank()) {
                         skipped++
@@ -61,20 +57,35 @@ class VideoScanner(private val context: Context) {
                         continue
                     }
 
-                    val width  = cursor.getInt(idxWidth)
-                    val height = cursor.getInt(idxHeight)
                     val name   = cursor.getString(idxName) ?: "Unknown"
                     val bucket = cursor.getString(idxBucket) ?: "Uncategorized"
+                    val date   = cursor.getLong(idxDate) * 1000L
 
-                    results += VideoEntity(
-                        name       = name,
-                        path       = path,
-                        category   = bucket,
-                        duration   = cursor.getLong(idxDuration),
-                        size       = cursor.getLong(idxSize),
-                        resolution = if (width > 0 && height > 0) "${width}x${height}" else "",
-                        dateAdded  = cursor.getLong(idxDate) * 1000L, // MediaStore gives seconds → ms
-                    )
+                    // Extract precise metadata natively
+                    val metadata = com.example.videolibrarymanager.util.VideoMetadataHelper.processVideo(context, path)
+                    
+                    if (metadata != null) {
+                        results += VideoEntity(
+                            name       = name,
+                            path       = path,
+                            category   = bucket,
+                            duration   = metadata.durationMs,
+                            size       = java.io.File(path).length(),
+                            resolution = if (metadata.width > 0 && metadata.height > 0) "${metadata.width}x${metadata.height}" else "",
+                            dateAdded  = date,
+                            thumbnailPath = metadata.thumbnailPath,
+                            checksum   = metadata.checksum
+                        )
+                    } else {
+                        // Mark as corrupt if we couldn't process it
+                        results += VideoEntity(
+                            name       = name,
+                            path       = path,
+                            category   = bucket,
+                            isCorrupt  = true,
+                            errorMessage = "Failed to process native metadata"
+                        )
+                    }
                 }
 
                 BugLogger.info(TAG,

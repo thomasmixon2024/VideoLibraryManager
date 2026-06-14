@@ -7,10 +7,13 @@ import kotlinx.coroutines.flow.Flow
 class VideoRepository(
     private val videoDao: VideoDao
 ) {
-    fun getAllVideos(): Flow<List<VideoEntity>> = videoDao.getAllVideos()
+    fun getAllVideos(): Flow<List<VideoEntity>>          = videoDao.getAllVideos()
     fun getQuarantinedVideos(): Flow<List<VideoEntity>> = videoDao.getQuarantinedVideos()
-    fun getVideoCount() = videoDao.getVideoCount()
-    suspend fun insert(video: VideoEntity) = videoDao.insert(video)
+    fun getVideoCount()                                 = videoDao.getVideoCount()
     fun searchVideos(query: String): Flow<List<VideoEntity>> = videoDao.searchVideos(query)
-    suspend fun deleteByPath(path: String) = videoDao.deleteByPath(path)
+
+    suspend fun insert(video: VideoEntity)              = videoDao.insert(video)
+    suspend fun insertAll(videos: List<VideoEntity>)    = videoDao.insertAll(videos)
+    suspend fun deleteByPath(path: String)              = videoDao.deleteByPath(path)
+    suspend fun clearAllVideos()                        = videoDao.clearAllVideos()
 }

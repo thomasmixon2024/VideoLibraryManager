@@ -50,31 +50,41 @@ class VideoScannerService : Service() {
         try {
             val dao     = VideoDatabase.getDatabase(applicationContext).videoDao()
             val scanner = VideoScanner(applicationContext)
-
-            BugLogger.info(TAG, "Running MediaStore scan…")
-            val videos = withContext(Dispatchers.IO) { scanner.scanAll() }
-            BugLogger.info(TAG, "MediaStore returned ${videos.size} video(s)")
-
-            if (videos.isEmpty()) {
-                BugLogger.warn(TAG, "No videos found — device may have no media or permission was revoked")
+            val settings = com.example.videolibrarymanager.data.SettingsRepository(applicationContext)
+            
+            val autoScan = settings.autoScanEnabled.first()
+            val skipCorrupt = settings.skipCorruptVideos.first()
+            val scanLimit = settings.scanLimit.first().toInt()
+            
+            if (!autoScan) {
+                BugLogger.info(TAG, "Auto-scan disabled by user preferences. Exiting.")
+                return
             }
 
-            var inserted = 0
-            var errors   = 0
-            videos.forEach { v ->
-                try {
-                    dao.insert(v)
-                    inserted++
-                    BugLogger.debug(TAG, "Inserted: ${v.name} (${v.path})")
-                } catch (e: Exception) {
-                    errors++
-                    BugLogger.error(TAG, "Failed to insert ${v.path}", e)
+            BugLogger.info(TAG, "Running MediaStore scan with limit $scanLimit…")
+            var videos = withContext(Dispatchers.IO) { scanner.scanAll(scanLimit) }
+            BugLogger.info(TAG, "MediaStore returned ${videos.size} video(s)")
+            
+            if (skipCorrupt) {
+                val initialSize = videos.size
+                videos = videos.filter { !it.isCorrupt }
+                if (initialSize != videos.size) {
+                    BugLogger.info(TAG, "Skipped ${initialSize - videos.size} corrupt videos based on preferences")
                 }
+            }
+
+            if (videos.isEmpty()) {
+                BugLogger.warn(TAG, "No valid videos found to insert.")
+            }
+
+            if (videos.isNotEmpty()) {
+                dao.insertAll(videos)
+                BugLogger.info(TAG, "Bulk inserted/replaced ${videos.size} videos")
             }
 
             val total   = dao.getVideoCount().first()
             val elapsed = System.currentTimeMillis() - startMs
-            BugLogger.info(TAG, "Scan complete — inserted=$inserted errors=$errors total_in_db=$total elapsed=${elapsed}ms")
+            BugLogger.info(TAG, "Scan complete — scanned=${videos.size} total_in_db=$total elapsed=${elapsed}ms")
 
         } catch (e: SecurityException) {
             BugLogger.error(TAG, "SecurityException — permission likely revoked at runtime", e)

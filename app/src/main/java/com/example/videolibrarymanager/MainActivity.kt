@@ -15,16 +15,18 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.lifecycleScope
 import com.example.videolibrarymanager.data.VideoDatabase
 import com.example.videolibrarymanager.data.VideoRepository
+import com.example.videolibrarymanager.service.VideoScannerService
 import com.example.videolibrarymanager.ui.MainNavigationShell
 import com.example.videolibrarymanager.ui.VideoViewModel
 import com.example.videolibrarymanager.ui.VideoViewModelFactory
 import com.example.videolibrarymanager.ui.theme.VideoLibraryManagerTheme
 import com.example.videolibrarymanager.util.BugLogger
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+
+import com.example.videolibrarymanager.ui.SettingsViewModel
+import com.example.videolibrarymanager.ui.SettingsViewModelFactory
+import com.example.videolibrarymanager.data.SettingsRepository
 
 class MainActivity : ComponentActivity() {
 
@@ -32,6 +34,11 @@ class MainActivity : ComponentActivity() {
         val database = VideoDatabase.getDatabase(this)
         val repository = VideoRepository(database.videoDao())
         VideoViewModelFactory(repository)
+    }
+
+    private val settingsViewModel: SettingsViewModel by viewModels {
+        val repository = SettingsRepository(applicationContext)
+        SettingsViewModelFactory(repository)
     }
 
     private val permissionLauncher = registerForActivityResult(
@@ -57,19 +64,8 @@ class MainActivity : ComponentActivity() {
                 ) {
                     MainNavigationShell(
                         viewModel = viewModel,
-                        onVideoClick = { video ->
-                            BugLogger.debug(TAG, "Selected Video Playback Event: ${video.path}")
-                        },
-                        onClearDatabase = {
-                            lifecycleScope.launch(Dispatchers.IO) {
-                                try {
-                                    VideoDatabase.getDatabase(this@MainActivity).videoDao().clearAllVideos()
-                                    BugLogger.info(TAG, "Video catalog database cleared by user preference configuration.")
-                                } catch (e: Exception) {
-                                    BugLogger.error(TAG, "Failed to completely wipe the catalog database", e)
-                                }
-                            }
-                        }
+                        settingsViewModel = settingsViewModel,
+                        onClearDatabase = { viewModel.clearAllVideos() }
                     )
                 }
             }
@@ -93,13 +89,9 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun startVideoScanner() {
-        BugLogger.info(TAG, "Spawning VideoScannerService background foreground context.")
-        try {
-            val intent = Intent(this, Class.forName("com.example.videolibrarymanager.service.VideoScannerService"))
-            ContextCompat.startForegroundService(this, intent)
-        } catch (e: ClassNotFoundException) {
-            BugLogger.error(TAG, "VideoScannerService definition missing from package context.", e)
-        }
+        BugLogger.info(TAG, "Spawning VideoScannerService foreground service.")
+        val intent = Intent(this, VideoScannerService::class.java)
+        ContextCompat.startForegroundService(this, intent)
     }
 
     private fun hasStoragePermission(): Boolean {

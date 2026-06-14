@@ -20,8 +20,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil.compose.rememberAsyncImagePainter
+import coil3.compose.rememberAsyncImagePainter
 import com.example.videolibrarymanager.data.VideoEntity
+import com.example.videolibrarymanager.util.Formatters
 import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -164,7 +165,7 @@ fun VideoResultRow(
                     }
                     if (video.duration > 0) {
                         Text(
-                            text = formatDuration(video.duration),
+                            text = Formatters.formatDuration(video.duration),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -175,9 +176,4 @@ fun VideoResultRow(
     }
 }
 
-private fun formatDuration(ms: Long): String {
-    val totalSeconds = ms / 1000
-    val minutes = totalSeconds / 60
-    val seconds = totalSeconds % 60
-    return String.format("%d:%02d", minutes, seconds)
-}
+

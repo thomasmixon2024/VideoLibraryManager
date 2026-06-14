@@ -4,13 +4,15 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import androidx.room.Transaction
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface VideoDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(video: VideoEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(videos: List<VideoEntity>)
 
     @Query("SELECT * FROM videos ORDER BY dateAdded DESC")
     fun getAllVideos(): Flow<List<VideoEntity>>
@@ -21,12 +23,11 @@ interface VideoDao {
     @Query("SELECT COUNT(*) FROM videos")
     fun getVideoCount(): Flow<Int>
 
-    @Transaction
     @Query("""
-        SELECT v.* FROM videos v 
-        JOIN videos_fts fts ON v.id = fts.docid 
-        WHERE videos_fts MATCH :query 
-        ORDER BY bm25(videos_fts) DESC 
+        SELECT v.* FROM videos v
+        INNER JOIN videos_fts ON videos_fts.docid = v.id
+        WHERE videos_fts MATCH :query
+        ORDER BY v.dateAdded DESC
         LIMIT 50
     """)
     fun searchVideos(query: String): Flow<List<VideoEntity>>

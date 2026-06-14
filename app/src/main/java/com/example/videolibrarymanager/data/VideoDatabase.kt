@@ -65,11 +65,11 @@ abstract class VideoDatabase : RoomDatabase() {
 
         val MIGRATION_2_3 = object : Migration(2, 3) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                BugLogger.info(TAG, "Running MIGRATION 2→3: creating FTS5 table and triggers")
+                BugLogger.info(TAG, "Running MIGRATION 2→3: creating FTS4 table and triggers")
 
                 db.execSQL("""
                     CREATE VIRTUAL TABLE IF NOT EXISTS videos_fts
-                    USING fts5(name, category, path, content='videos', content_rowid='id')
+                    USING fts4(name, category, path, content='videos')
                 """.trimIndent())
 
                 db.execSQL("""
@@ -98,7 +98,7 @@ abstract class VideoDatabase : RoomDatabase() {
                     END;
                 """.trimIndent())
 
-                BugLogger.info(TAG, "MIGRATION 2→3 complete — FTS5 table + 3 triggers created")
+                BugLogger.info(TAG, "MIGRATION 2→3 complete — FTS4 table + 3 triggers created")
             }
         }
     }

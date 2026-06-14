@@ -12,15 +12,18 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
+    settingsViewModel: SettingsViewModel,
     onClearDatabase: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var autoScanEnabled by remember { mutableStateOf(true) }
-    var skipCorruptVideos by remember { mutableStateOf(false) }
-    var scanLimitSliderPosition by remember { mutableFloatStateOf(500f) }
+    val autoScanEnabled by settingsViewModel.autoScanEnabled.collectAsStateWithLifecycle()
+    val skipCorruptVideos by settingsViewModel.skipCorruptVideos.collectAsStateWithLifecycle()
+    val scanLimitSliderPosition by settingsViewModel.scanLimit.collectAsStateWithLifecycle()
     
     var showDeleteConfirmationDialog by remember { mutableStateOf(false) }
 
@@ -45,7 +48,7 @@ fun SettingsScreen(
                 .height(56.dp)
                 .toggleable(
                     value = autoScanEnabled,
-                    onValueChange = { autoScanEnabled = it },
+                    onValueChange = { settingsViewModel.setAutoScanEnabled(it) },
                     role = Role.Switch
                 ),
             verticalAlignment = Alignment.CenterVertically
@@ -63,7 +66,7 @@ fun SettingsScreen(
                 .height(56.dp)
                 .toggleable(
                     value = skipCorruptVideos,
-                    onValueChange = { skipCorruptVideos = it },
+                    onValueChange = { settingsViewModel.setSkipCorruptVideos(it) },
                     role = Role.Switch
                 ),
             verticalAlignment = Alignment.CenterVertically
@@ -77,11 +80,11 @@ fun SettingsScreen(
 
         Column(modifier = Modifier.fillMaxWidth()) {
             Text("Max Queue Processing Constraints", style = MaterialTheme.typography.bodyLarge)
-            Text("Limit scans to a maximum of:  files", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("Limit scans to a maximum of: ${scanLimitSliderPosition.toInt()} files", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(modifier = Modifier.height(8.dp))
             Slider(
                 value = scanLimitSliderPosition,
-                onValueChange = { scanLimitSliderPosition = it },
+                onValueChange = { settingsViewModel.setScanLimit(it) },
                 valueRange = 50f..2000f,
                 steps = 39
             )

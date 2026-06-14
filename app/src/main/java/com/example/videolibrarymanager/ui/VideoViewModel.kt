@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.videolibrarymanager.data.VideoEntity
 import com.example.videolibrarymanager.data.VideoRepository
 import com.example.videolibrarymanager.util.BugLogger
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -76,6 +77,19 @@ class VideoViewModel(
 
     fun searchVideos(query: String): Flow<List<VideoEntity>> {
         return repository.searchVideos(query)
+    }
+
+    fun clearAllVideos() {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                BugLogger.info(TAG, "clearAllVideos() — wiping video catalog")
+                repository.clearAllVideos()
+                BugLogger.info(TAG, "clearAllVideos() — catalog cleared successfully")
+            } catch (e: Exception) {
+                BugLogger.error(TAG, "clearAllVideos() failed", e)
+                _error.value = e.message
+            }
+        }
     }
 
     companion object { private const val TAG = "VideoViewModel" }

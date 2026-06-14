@@ -1,11 +1,11 @@
 package com.example.videolibrarymanager.data
 
 import androidx.room.Entity
-import androidx.room.Fts5
+import androidx.room.Fts4
 
-// Using FTS5 to match the database migration in VideoDatabase (MIGRATION_2_3)
+// Using FTS4
 @Entity(tableName = "videos_fts")
-@Fts5(contentEntity = VideoEntity::class)
+@Fts4(contentEntity = VideoEntity::class)
 data class VideoFtsEntity(
     val name: String,
     val category: String,
