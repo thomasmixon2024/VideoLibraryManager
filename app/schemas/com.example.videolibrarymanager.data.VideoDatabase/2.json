@@ -1,0 +1,40 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 2,
+    "identityHash": "b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6",
+    "entities": [
+      {
+        "tableName": "videos",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `path` TEXT NOT NULL, `name` TEXT NOT NULL, `category` TEXT NOT NULL, `duration` INTEGER NOT NULL, `resolution` TEXT NOT NULL, `size` INTEGER NOT NULL, `thumbnailPath` TEXT, `checksum` TEXT, `dateAdded` INTEGER NOT NULL, `isCorrupt` INTEGER NOT NULL, `errorMessage` TEXT)",
+        "fields": [
+          {"fieldPath": "id", "columnName": "id", "affinity": "INTEGER", "notNull": true},
+          {"fieldPath": "path", "columnName": "path", "affinity": "TEXT", "notNull": true},
+          {"fieldPath": "name", "columnName": "name", "affinity": "TEXT", "notNull": true},
+          {"fieldPath": "category", "columnName": "category", "affinity": "TEXT", "notNull": true},
+          {"fieldPath": "duration", "columnName": "duration", "affinity": "INTEGER", "notNull": true},
+          {"fieldPath": "resolution", "columnName": "resolution", "affinity": "TEXT", "notNull": true},
+          {"fieldPath": "size", "columnName": "size", "affinity": "INTEGER", "notNull": true},
+          {"fieldPath": "thumbnailPath", "columnName": "thumbnailPath", "affinity": "TEXT", "notNull": false},
+          {"fieldPath": "checksum", "columnName": "checksum", "affinity": "TEXT", "notNull": false},
+          {"fieldPath": "dateAdded", "columnName": "dateAdded", "affinity": "INTEGER", "notNull": true},
+          {"fieldPath": "isCorrupt", "columnName": "isCorrupt", "affinity": "INTEGER", "notNull": true},
+          {"fieldPath": "errorMessage", "columnName": "errorMessage", "affinity": "TEXT", "notNull": false}
+        ],
+        "primaryKey": {"autoGenerate": true, "columnNames": ["id"]},
+        "indices": [
+          {"name": "index_videos_path", "unique": true, "columnNames": ["path"], "orders": [], "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_videos_path` ON `${TABLE_NAME}` (`path`)"},
+          {"name": "index_videos_category_dateAdded", "unique": false, "columnNames": ["category","dateAdded"], "orders": [], "createSql": "CREATE INDEX IF NOT EXISTS `index_videos_category_dateAdded` ON `${TABLE_NAME}` (`category`, `dateAdded`)"},
+          {"name": "index_videos_isCorrupt", "unique": false, "columnNames": ["isCorrupt"], "orders": [], "createSql": "CREATE INDEX IF NOT EXISTS `index_videos_isCorrupt` ON `${TABLE_NAME}` (`isCorrupt`)"},
+          {"name": "index_videos_name", "unique": false, "columnNames": ["name"], "orders": [], "createSql": "CREATE INDEX IF NOT EXISTS `index_videos_name` ON `${TABLE_NAME}` (`name`)"}
+        ],
+        "foreignKeys": []
+      }
+    ],
+    "views": [],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6')"
+    ]
+  }
+}

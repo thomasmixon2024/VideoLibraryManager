@@ -51,7 +51,7 @@ fun LogViewerScreen(onBack: () -> Unit) {
                 actions = {
                     // Share log file
                     IconButton(onClick = {
-                        val file = BugLogger.logFile()
+                        val file = BugLogger.getLogFile()
                         if (file != null && file.exists()) {
                             val uri = FileProvider.getUriForFile(
                                 context,

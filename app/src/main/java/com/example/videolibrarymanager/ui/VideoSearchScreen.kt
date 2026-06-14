@@ -33,7 +33,7 @@ fun VideoSearchScreen(
     modifier: Modifier = Modifier
 ) {
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
-    val searchResults by viewModel.searchResults.collectAsStateWithLifecycle(initialValue = emptyList())
+    val searchResults by viewModel.searchResults.collectAsStateWithLifecycle()
 
     Column(
         modifier = modifier

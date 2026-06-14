@@ -58,7 +58,7 @@ object BugLogger {
         ?: "(BugLogger not initialized)"
 
     /** Raw File reference for FileProvider / share-intent. */
-    fun logFile(): File? = logFile
+    fun getLogFile(): File? = logFile
 
     /** Erase and restart log. */
     fun clear() {

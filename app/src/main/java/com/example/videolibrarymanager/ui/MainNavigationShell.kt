@@ -37,7 +37,7 @@ fun MainNavigationShell(
         }
     }
 
-    val showBottomBar = currentRoute != Screen.Player.route
+    val showBottomBar = !currentRoute.startsWith("player/")
 
     Scaffold(
         bottomBar = {

@@ -68,7 +68,8 @@ dependencies {
     ksp(libs.androidx.room.compiler)
 
     // Image loading
-    implementation("io.coil-kt.coil3:coil-compose:3.0.0-rc01")
+        implementation("com.google.android.material:material:1.12.0")
+    implementation("io.coil-kt.coil3:coil-compose:3.0.4")
 
     // Coroutines
     implementation(libs.kotlinx.coroutines.android)
