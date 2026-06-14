@@ -24,7 +24,7 @@ An Android app that scans your device for video files, stores metadata in a loca
 | Thumbnail generation | ✅ |
 | ExoPlayer video playback | ✅ |
 | Persistent settings (DataStore) | ✅ |
-| Search UI (FTS connected) | 🔜 TODO |
+| Search UI (FTS connected) — prefix wildcard via `VideoRepository` | ✅ |
 
 ---
 
