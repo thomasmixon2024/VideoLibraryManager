@@ -94,7 +94,7 @@ class VideoScannerService : Service() {
                 BugLogger.info(TAG, "Bulk inserted/replaced ${mergedVideos.size} videos (preserved categories)")
             }
 
-            val total   = dao.getVideoCount().first()
+            val total   = repository.getVideoCount().first()
             val elapsed = System.currentTimeMillis() - startMs
             BugLogger.info(TAG, "Scan complete — scanned=${videos.size} total_in_db=$total elapsed=${elapsed}ms")
 

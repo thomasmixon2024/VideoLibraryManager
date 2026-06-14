@@ -70,11 +70,15 @@ object BugLogger {
     // ── Internals ─────────────────────────────────────────────────────────────
 
     private fun write(level: String, tag: String, msg: String, t: Throwable?) {
-        when (level.trim()) {
-            "INFO"  -> Log.i(tag, msg)
-            "WARN"  -> Log.w(tag, msg)
-            "ERROR" -> if (t != null) Log.e(tag, msg, t) else Log.e(tag, msg)
-            "DEBUG" -> Log.d(tag, msg)
+        try {
+            when (level.trim()) {
+                "INFO"  -> Log.i(tag, msg)
+                "WARN"  -> Log.w(tag, msg)
+                "ERROR" -> if (t != null) Log.e(tag, msg, t) else Log.e(tag, msg)
+                "DEBUG" -> Log.d(tag, msg)
+            }
+        } catch (_: Throwable) {
+            // Running in unit tests or unsupported runtime where android.util.Log is unavailable.
         }
 
         val sb = StringBuilder()
