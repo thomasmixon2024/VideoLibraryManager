@@ -37,26 +37,30 @@ fun MainNavigationShell(
         }
     }
 
+    val showBottomBar = currentRoute != Screen.Player.route
+
     Scaffold(
         bottomBar = {
-            NavigationBar {
-                val items = listOf(Screen.Home, Screen.Search, Screen.Settings)
-                items.forEach { screen ->
-                    if (screen.icon != null) {
-                        NavigationBarItem(
-                            icon = { Icon(screen.icon, contentDescription = screen.title) },
-                            label = { Text(screen.title) },
-                            selected = currentRoute == screen.route,
-                            onClick = {
-                                if (currentRoute != screen.route) {
-                                    navController.navigate(screen.route) {
-                                        popUpTo(navController.graph.startDestinationId) { saveState = true }
-                                        launchSingleTop = true
-                                        restoreState = true
+            if (showBottomBar) {
+                NavigationBar {
+                    val items = listOf(Screen.Home, Screen.Search, Screen.Settings)
+                    items.forEach { screen ->
+                        if (screen.icon != null) {
+                            NavigationBarItem(
+                                icon = { Icon(screen.icon, contentDescription = screen.title) },
+                                label = { Text(screen.title) },
+                                selected = currentRoute == screen.route,
+                                onClick = {
+                                    if (currentRoute != screen.route) {
+                                        navController.navigate(screen.route) {
+                                            popUpTo(navController.graph.startDestinationId) { saveState = true }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
                                     }
                                 }
-                            }
-                        )
+                            )
+                        }
                     }
                 }
             }

@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.map
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
-class SettingsRepository(private val context: Context) {
+class SettingsRepository private constructor(private val context: Context) {
 
     companion object {
         val AUTO_SCAN_ENABLED   = booleanPreferencesKey("auto_scan_enabled")
@@ -17,11 +17,18 @@ class SettingsRepository(private val context: Context) {
         val SCAN_LIMIT          = floatPreferencesKey("scan_limit")
         /** Empty set = scan ALL folders (default open filter). */
         val INCLUDED_FOLDERS    = stringSetPreferencesKey("included_folders")
+
+        @Volatile private var INSTANCE: SettingsRepository? = null
+
+        fun getInstance(context: Context): SettingsRepository =
+            INSTANCE ?: synchronized(this) {
+                INSTANCE ?: SettingsRepository(context.applicationContext).also { INSTANCE = it }
+            }
     }
 
     val autoScanEnabled: Flow<Boolean> = context.dataStore.data
         .map { preferences ->
-            preferences[AUTO_SCAN_ENABLED] ?: false
+            preferences[AUTO_SCAN_ENABLED] ?: true
         }
 
     val skipCorruptVideos: Flow<Boolean> = context.dataStore.data

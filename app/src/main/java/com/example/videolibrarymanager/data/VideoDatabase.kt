@@ -65,7 +65,7 @@ abstract class VideoDatabase : RoomDatabase() {
 
         val MIGRATION_2_3 = object : Migration(2, 3) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                BugLogger.info(TAG, "Running MIGRATION 2→3: creating FTS4 table and triggers")
+                BugLogger.info(TAG, "Running MIGRATION 2→3: creating FTS4 table")
 
                 db.execSQL("""
                     CREATE VIRTUAL TABLE IF NOT EXISTS videos_fts
@@ -77,28 +77,7 @@ abstract class VideoDatabase : RoomDatabase() {
                     SELECT id, name, category, path FROM videos
                 """.trimIndent())
 
-                db.execSQL("""
-                    CREATE TRIGGER IF NOT EXISTS videos_ai AFTER INSERT ON videos BEGIN
-                        INSERT INTO videos_fts(docid, name, category, path)
-                        VALUES (new.id, new.name, new.category, new.path);
-                    END;
-                """.trimIndent())
-
-                db.execSQL("""
-                    CREATE TRIGGER IF NOT EXISTS videos_ad AFTER DELETE ON videos BEGIN
-                        DELETE FROM videos_fts WHERE docid = old.id;
-                    END;
-                """.trimIndent())
-
-                db.execSQL("""
-                    CREATE TRIGGER IF NOT EXISTS videos_au AFTER UPDATE ON videos BEGIN
-                        DELETE FROM videos_fts WHERE docid = old.id;
-                        INSERT INTO videos_fts(docid, name, category, path)
-                        VALUES (new.id, new.name, new.category, new.path);
-                    END;
-                """.trimIndent())
-
-                BugLogger.info(TAG, "MIGRATION 2→3 complete — FTS4 table + 3 triggers created")
+                BugLogger.info(TAG, "MIGRATION 2→3 complete")
             }
         }
     }

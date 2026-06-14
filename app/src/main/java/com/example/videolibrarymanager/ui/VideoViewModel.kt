@@ -13,47 +13,47 @@ class VideoViewModel(
     private val repository: VideoRepository
 ) : ViewModel() {
 
-    private val _videos    = MutableStateFlow<List<VideoEntity>>(emptyList())
-    val videos: StateFlow<List<VideoEntity>> = _videos.asStateFlow()
-
     private val _isLoading = MutableStateFlow(true)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
-    private val _error     = MutableStateFlow<String?>(null)
+    private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
     private val _videoCount = MutableStateFlow(0)
     val videoCount: StateFlow<Int> = _videoCount.asStateFlow()
 
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
+    val videos: StateFlow<List<VideoEntity>> = repository.getAllVideos()
+        .onEach { list ->
+            BugLogger.debug(TAG, "Flow emission: ${list.size} video(s)")
+            _isLoading.value = false
+        }
+        .catch { e ->
+            BugLogger.error(TAG, "Error in getAllVideos flow", e)
+            _error.value = e.message
+            _isLoading.value = false
+            emit(emptyList())
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val searchResults: StateFlow<List<VideoEntity>> = _searchQuery
+        .debounce(300)
+        .distinctUntilChanged()
+        .flatMapLatest { query ->
+            if (query.isBlank()) repository.getAllVideos()
+            else repository.searchVideos(query)
+        }
+        .catch { e ->
+            BugLogger.error(TAG, "Error in searchResults flow", e)
+            emit(emptyList())
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     init {
         BugLogger.debug(TAG, "init — starting video observation")
-        loadVideos()
         observeCount()
-    }
-
-    fun loadVideos() {
-        viewModelScope.launch {
-            _isLoading.value = true
-            _error.value     = null
-            BugLogger.info(TAG, "loadVideos() — collecting getAllVideos flow")
-            try {
-                repository.getAllVideos()
-                    .onEach { list ->
-                        BugLogger.debug(TAG, "Flow emission: ${list.size} video(s)")
-                        _isLoading.value = false
-                    }
-                    .catch { e ->
-                        BugLogger.error(TAG, "Error in getAllVideos flow", e)
-                        _error.value     = e.message
-                        _isLoading.value = false
-                    }
-                    .collect { list -> _videos.value = list }
-            } catch (e: Exception) {
-                BugLogger.error(TAG, "loadVideos() threw", e)
-                _error.value     = e.message
-                _isLoading.value = false
-            }
-        }
     }
 
     private fun observeCount() {
@@ -65,18 +65,19 @@ class VideoViewModel(
         }
     }
 
+    fun setSearchQuery(query: String) {
+        _searchQuery.value = query
+    }
+
     fun retry() {
         BugLogger.info(TAG, "retry() called by user")
-        loadVideos()
+        _error.value = null
+        _isLoading.value = true
     }
 
     override fun onCleared() {
         super.onCleared()
         BugLogger.debug(TAG, "onCleared")
-    }
-
-    fun searchVideos(query: String): Flow<List<VideoEntity>> {
-        return repository.searchVideos(query)
     }
 
     fun clearAllVideos() {

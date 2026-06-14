@@ -37,7 +37,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private val settingsViewModel: SettingsViewModel by viewModels {
-        val repository = SettingsRepository(applicationContext)
+        val repository = SettingsRepository.getInstance(applicationContext)
         SettingsViewModelFactory(repository)
     }
 

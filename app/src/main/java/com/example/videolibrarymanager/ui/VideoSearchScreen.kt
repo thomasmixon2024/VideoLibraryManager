@@ -32,15 +32,8 @@ fun VideoSearchScreen(
     onVideoClick: (VideoEntity) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var searchQuery by remember { mutableStateOf("") }
-    
-    val searchResults by remember(searchQuery) {
-        if (searchQuery.isBlank()) {
-            viewModel.videos
-        } else {
-            viewModel.searchVideos(searchQuery)
-        }
-    }.collectAsStateWithLifecycle(initialValue = emptyList())
+    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
+    val searchResults by viewModel.searchResults.collectAsStateWithLifecycle(initialValue = emptyList())
 
     Column(
         modifier = modifier
@@ -49,13 +42,13 @@ fun VideoSearchScreen(
     ) {
         OutlinedTextField(
             value = searchQuery,
-            onValueChange = { searchQuery = it },
+            onValueChange = { viewModel.setSearchQuery(it) },
             modifier = Modifier.fillMaxWidth(),
             placeholder = { Text("Search local video catalog...") },
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search Icon") },
             trailingIcon = {
                 if (searchQuery.isNotEmpty()) {
-                    IconButton(onClick = { searchQuery = "" }) {
+                    IconButton(onClick = { viewModel.setSearchQuery("") }) {
                         Icon(Icons.Default.Clear, contentDescription = "Clear Search Input")
                     }
                 }

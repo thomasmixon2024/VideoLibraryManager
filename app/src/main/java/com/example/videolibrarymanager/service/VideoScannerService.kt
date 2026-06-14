@@ -48,15 +48,16 @@ class VideoScannerService : Service() {
         val startMs = System.currentTimeMillis()
         BugLogger.info(TAG, "─── Scan cycle started ───")
         try {
-            val dao     = VideoDatabase.getDatabase(applicationContext).videoDao()
+            val database = VideoDatabase.getDatabase(applicationContext)
+            val repository = com.example.videolibrarymanager.data.VideoRepository(database.videoDao())
             val scanner = VideoScanner(applicationContext)
-            val settings = com.example.videolibrarymanager.data.SettingsRepository(applicationContext)
-            
+            val settings = com.example.videolibrarymanager.data.SettingsRepository.getInstance(applicationContext)
+
             val autoScan = settings.autoScanEnabled.first()
             val skipCorrupt = settings.skipCorruptVideos.first()
             val scanLimit = settings.scanLimit.first().toInt()
             val includedFolders = settings.includedFolders.first()
-            
+
             if (!autoScan) {
                 BugLogger.info(TAG, "Auto-scan disabled by user preferences. Exiting.")
                 return
@@ -79,7 +80,7 @@ class VideoScannerService : Service() {
             }
 
             if (videos.isNotEmpty()) {
-                val existingVideos = dao.getAllVideos().first()
+                val existingVideos = repository.getAllVideos().first()
                 val pathMap = existingVideos.associateBy { it.path }
                 val mergedVideos = videos.map { scanned ->
                     val existing = pathMap[scanned.path]
@@ -89,7 +90,7 @@ class VideoScannerService : Service() {
                         scanned
                     }
                 }
-                dao.insertAll(mergedVideos)
+                repository.insertAll(mergedVideos)
                 BugLogger.info(TAG, "Bulk inserted/replaced ${mergedVideos.size} videos (preserved categories)")
             }
 

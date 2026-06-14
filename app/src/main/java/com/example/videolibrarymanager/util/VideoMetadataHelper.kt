@@ -20,10 +20,14 @@ data class VideoMetadata(
 object VideoMetadataHelper {
 
     /**
-     * Extracts metadata, generates a thumbnail, and calculates a SHA-256 checksum for the given video file.
+     * Extracts metadata, generates a thumbnail, and optionally calculates a SHA-256 checksum for the given video file.
      * All disk/IO operations are run on the IO dispatcher.
      */
-    suspend fun processVideo(context: Context, videoPath: String): VideoMetadata? = withContext(Dispatchers.IO) {
+    suspend fun processVideo(
+        context: Context,
+        videoPath: String,
+        calculateChecksum: Boolean = false
+    ): VideoMetadata? = withContext(Dispatchers.IO) {
         val file = File(videoPath)
         if (!file.exists() || !file.canRead()) {
             BugLogger.warn("VideoMetadataHelper", "File does not exist or cannot be read: $videoPath")
@@ -36,20 +40,23 @@ object VideoMetadataHelper {
         var thumbnailPath: String? = null
         val checksum: String?
 
-        // 1. Calculate Checksum
-        try {
-            val digest = MessageDigest.getInstance("SHA-256")
-            file.inputStream().use { input ->
-                val buffer = ByteArray(8192)
-                var bytesRead: Int
-                while (input.read(buffer).also { bytesRead = it } != -1) {
-                    digest.update(buffer, 0, bytesRead)
+        if (calculateChecksum) {
+            checksum = try {
+                val digest = MessageDigest.getInstance("SHA-256")
+                file.inputStream().use { input ->
+                    val buffer = ByteArray(8192)
+                    var bytesRead: Int
+                    while (input.read(buffer).also { bytesRead = it } != -1) {
+                        digest.update(buffer, 0, bytesRead)
+                    }
                 }
+                digest.digest().joinToString("") { "%02x".format(it) }
+            } catch (e: Exception) {
+                BugLogger.error("VideoMetadataHelper", "Failed to calculate checksum for $videoPath", e)
+                return@withContext null
             }
-            checksum = digest.digest().joinToString("") { "%02x".format(it) }
-        } catch (e: Exception) {
-            BugLogger.error("VideoMetadataHelper", "Failed to calculate checksum for $videoPath", e)
-            return@withContext null
+        } else {
+            checksum = null
         }
 
         // 2. Extract Metadata & Thumbnail
@@ -66,7 +73,7 @@ object VideoMetadataHelper {
             val frame = retriever.getFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
             
             if (frame != null) {
-                val thumbFile = File(context.cacheDir, "thumb_$checksum.jpg")
+                val thumbFile = File(context.cacheDir, "thumb_${videoPath.hashCode()}.jpg")
                 FileOutputStream(thumbFile).use { out ->
                     frame.compress(Bitmap.CompressFormat.JPEG, 85, out)
                 }

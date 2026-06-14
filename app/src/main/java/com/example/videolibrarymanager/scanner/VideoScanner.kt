@@ -71,8 +71,13 @@ class VideoScanner(private val context: Context) {
 
                     val date   = cursor.getLong(idxDate) * 1000L
 
-                    // Extract precise metadata natively
-                    val metadata = com.example.videolibrarymanager.util.VideoMetadataHelper.processVideo(context, path)
+                    // Extract precise metadata natively. Do not compute checksum on every scan,
+                    // because it is expensive and not currently used by the app's workflows.
+                    val metadata = com.example.videolibrarymanager.util.VideoMetadataHelper.processVideo(
+                        context,
+                        path,
+                        calculateChecksum = false
+                    )
                     
                     if (metadata != null) {
                         results += VideoEntity(
