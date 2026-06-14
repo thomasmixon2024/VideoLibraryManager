@@ -2,7 +2,7 @@
 
 An Android app that scans your device for video files, stores metadata in a local Room database, and displays a clean Jetpack Compose UI. Includes a persistent **run/bug log** accessible from within the app.
 
-[![Android CI](https://github.com/your-org/VideoLibraryManager/actions/workflows/android.yml/badge.svg)](https://github.com/your-org/VideoLibraryManager/actions/workflows/android.yml)
+[![Android CI](https://github.com/thomasmixon2024/VideoLibraryManager/actions/workflows/android.yml/badge.svg)](https://github.com/thomasmixon2024/VideoLibraryManager/actions/workflows/android.yml)
 
 ---
 
