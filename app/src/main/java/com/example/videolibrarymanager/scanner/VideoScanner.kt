@@ -7,19 +7,22 @@ import com.example.videolibrarymanager.util.BugLogger
 
 /**
  * VideoScanner — queries MediaStore for all video files on the device.
- *
- * TODO: Integrate FFmpeg Kit to extract precise duration, resolution,
- *       codec info, and generate thumbnails for each video.
- * TODO: Add SHA-256 checksum generation for corrupt-file detection.
+ * Optionally filters to a specific set of MediaStore bucket (folder) names.
  */
 class VideoScanner(private val context: Context) {
 
     /**
-     * Returns all video files found via MediaStore.
+     * Returns video files found via MediaStore, optionally limited to [includedFolders].
+     * [includedFolders] — set of BUCKET_DISPLAY_NAME strings to allow.
+     *                      Empty set means "include all folders" (default, open filter).
      * Requires READ_MEDIA_VIDEO (API 33+) or READ_EXTERNAL_STORAGE (≤ API 32).
      */
-    suspend fun scanAll(limit: Int = 500): List<VideoEntity> {
-        BugLogger.debug(TAG, "scanAll() — querying MediaStore.Video.Media.EXTERNAL_CONTENT_URI limit=$limit")
+    suspend fun scanAll(
+        limit: Int = 500,
+        includedFolders: Set<String> = emptySet()
+    ): List<VideoEntity> {
+        val folderDesc = if (includedFolders.isEmpty()) "all" else includedFolders.joinToString()
+        BugLogger.debug(TAG, "scanAll() — limit=$limit folders=$folderDesc")
         val results = mutableListOf<VideoEntity>()
 
         val projection = arrayOf(
@@ -59,6 +62,13 @@ class VideoScanner(private val context: Context) {
 
                     val name   = cursor.getString(idxName) ?: "Unknown"
                     val bucket = cursor.getString(idxBucket) ?: "Uncategorized"
+
+                    // Apply folder filter — skip if bucket not in the allowed set
+                    if (includedFolders.isNotEmpty() && bucket !in includedFolders) {
+                        skipped++
+                        continue
+                    }
+
                     val date   = cursor.getLong(idxDate) * 1000L
 
                     // Extract precise metadata natively

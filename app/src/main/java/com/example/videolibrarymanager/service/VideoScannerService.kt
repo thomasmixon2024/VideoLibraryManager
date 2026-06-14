@@ -55,14 +55,15 @@ class VideoScannerService : Service() {
             val autoScan = settings.autoScanEnabled.first()
             val skipCorrupt = settings.skipCorruptVideos.first()
             val scanLimit = settings.scanLimit.first().toInt()
+            val includedFolders = settings.includedFolders.first()
             
             if (!autoScan) {
                 BugLogger.info(TAG, "Auto-scan disabled by user preferences. Exiting.")
                 return
             }
 
-            BugLogger.info(TAG, "Running MediaStore scan with limit $scanLimit…")
-            var videos = withContext(Dispatchers.IO) { scanner.scanAll(scanLimit) }
+            BugLogger.info(TAG, "Running MediaStore scan with limit $scanLimit, folders=${if (includedFolders.isEmpty()) "all" else includedFolders}…")
+            var videos = withContext(Dispatchers.IO) { scanner.scanAll(scanLimit, includedFolders) }
             BugLogger.info(TAG, "MediaStore returned ${videos.size} video(s)")
             
             if (skipCorrupt) {
@@ -78,8 +79,18 @@ class VideoScannerService : Service() {
             }
 
             if (videos.isNotEmpty()) {
-                dao.insertAll(videos)
-                BugLogger.info(TAG, "Bulk inserted/replaced ${videos.size} videos")
+                val existingVideos = dao.getAllVideos().first()
+                val pathMap = existingVideos.associateBy { it.path }
+                val mergedVideos = videos.map { scanned ->
+                    val existing = pathMap[scanned.path]
+                    if (existing != null) {
+                        scanned.copy(id = existing.id, category = existing.category)
+                    } else {
+                        scanned
+                    }
+                }
+                dao.insertAll(mergedVideos)
+                BugLogger.info(TAG, "Bulk inserted/replaced ${mergedVideos.size} videos (preserved categories)")
             }
 
             val total   = dao.getVideoCount().first()

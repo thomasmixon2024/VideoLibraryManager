@@ -91,7 +91,8 @@ fun MainNavigationShell(
             composable(Screen.Settings.route) {
                 SettingsScreen(
                     settingsViewModel = settingsViewModel,
-                    onClearDatabase = onClearDatabase
+                    videoViewModel    = viewModel,
+                    onClearDatabase   = onClearDatabase
                 )
             }
             composable(

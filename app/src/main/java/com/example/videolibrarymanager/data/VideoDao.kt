@@ -37,4 +37,7 @@ interface VideoDao {
 
     @Query("DELETE FROM videos")
     suspend fun clearAllVideos()
+
+    @Query("UPDATE videos SET category = :category WHERE id = :id")
+    suspend fun updateCategory(id: Long, category: String)
 }

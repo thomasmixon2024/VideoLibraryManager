@@ -27,4 +27,5 @@ class VideoRepository(
     suspend fun insertAll(videos: List<VideoEntity>)    = videoDao.insertAll(videos)
     suspend fun deleteByPath(path: String)              = videoDao.deleteByPath(path)
     suspend fun clearAllVideos()                        = videoDao.clearAllVideos()
+    suspend fun updateCategory(id: Long, category: String) = videoDao.updateCategory(id, category)
 }

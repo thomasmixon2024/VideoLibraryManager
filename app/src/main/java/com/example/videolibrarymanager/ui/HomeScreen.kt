@@ -25,6 +25,8 @@ fun HomeScreen(
     val error      by viewModel.error.collectAsStateWithLifecycle()
     val videoCount by viewModel.videoCount.collectAsStateWithLifecycle()
 
+    var videoToEditCategory by remember { mutableStateOf<VideoEntity?>(null) }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -44,46 +46,113 @@ fun HomeScreen(
                 isLoading  -> CircularProgressIndicator(Modifier.align(Alignment.Center))
                 error != null -> ErrorState(error = error!!, onRetry = viewModel::retry)
                 videos.isEmpty() -> EmptyState()
-                else -> VideoList(videos, onVideoClick)
+                else -> VideoList(
+                    videos = videos,
+                    onVideoClick = onVideoClick,
+                    onEditCategoryClick = { videoToEditCategory = it }
+                )
             }
         }
     }
+
+    if (videoToEditCategory != null) {
+        var categoryText by remember { mutableStateOf(videoToEditCategory!!.category) }
+        AlertDialog(
+            onDismissRequest = { videoToEditCategory = null },
+            title = { Text("Edit Category") },
+            text = {
+                Column {
+                    Text(
+                        text = "Assign a custom category tag for organizing your library.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    OutlinedTextField(
+                        value = categoryText,
+                        onValueChange = { categoryText = it },
+                        label = { Text("Category") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val video = videoToEditCategory
+                        if (video != null) {
+                            viewModel.updateVideoCategory(video.id, categoryText.trim())
+                        }
+                        videoToEditCategory = null
+                    }
+                ) {
+                    Text("Save")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { videoToEditCategory = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 }
 
 @Composable
-fun VideoList(videos: List<VideoEntity>, onVideoClick: (VideoEntity) -> Unit) {
+fun VideoList(
+    videos: List<VideoEntity>,
+    onVideoClick: (VideoEntity) -> Unit,
+    onEditCategoryClick: (VideoEntity) -> Unit
+) {
     LazyColumn(contentPadding = PaddingValues(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         items(videos, key = { it.id }) { video ->
-            VideoCard(video, onClick = { onVideoClick(video) })
+            VideoCard(
+                video = video,
+                onClick = { onVideoClick(video) },
+                onEditCategoryClick = { onEditCategoryClick(video) }
+            )
         }
     }
 }
 
 @Composable
-fun VideoCard(video: VideoEntity, onClick: () -> Unit) {
+fun VideoCard(
+    video: VideoEntity,
+    onClick: () -> Unit,
+    onEditCategoryClick: () -> Unit
+) {
     Card(modifier = Modifier.fillMaxWidth(), onClick = onClick) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(
-                text     = video.name,
-                style    = MaterialTheme.typography.titleSmall,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text  = buildString {
-                    append(video.category)
-                    if (video.resolution.isNotEmpty()) append(" • ${video.resolution}")
-                    if (video.duration > 0) append(" • ${Formatters.formatDuration(video.duration)}")
-                    if (video.size > 0) append(" • ${Formatters.formatSize(video.size)}")
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            if (video.isCorrupt) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text     = video.name,
+                    style    = MaterialTheme.typography.titleSmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
                 Spacer(Modifier.height(4.dp))
-                Text("⚠ Corrupt", color = MaterialTheme.colorScheme.error,
-                     style = MaterialTheme.typography.labelSmall)
+                Text(
+                    text  = buildString {
+                        append(video.category)
+                        if (video.resolution.isNotEmpty()) append(" • ${video.resolution}")
+                        if (video.duration > 0) append(" • ${Formatters.formatDuration(video.duration)}")
+                        if (video.size > 0) append(" • ${Formatters.formatSize(video.size)}")
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                if (video.isCorrupt) {
+                    Spacer(Modifier.height(4.dp))
+                    Text("⚠ Corrupt", color = MaterialTheme.colorScheme.error,
+                         style = MaterialTheme.typography.labelSmall)
+                }
+            }
+            IconButton(onClick = onEditCategoryClick) {
+                Text("🏷️")
             }
         }
     }

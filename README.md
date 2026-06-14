@@ -25,6 +25,8 @@ An Android app that scans your device for video files, stores metadata in a loca
 | ExoPlayer video playback | ✅ |
 | Persistent settings (DataStore) | ✅ |
 | Search UI (FTS connected) — prefix wildcard via `VideoRepository` | ✅ |
+| Scan folder filtering (Custom Scan Paths via MediaStore Buckets) | ✅ |
+| Category customization (Tag-based category updates preserved across scans) | ✅ |
 
 ---
 

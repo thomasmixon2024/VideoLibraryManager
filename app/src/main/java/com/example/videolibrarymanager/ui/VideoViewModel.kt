@@ -92,6 +92,19 @@ class VideoViewModel(
         }
     }
 
+    fun updateVideoCategory(id: Long, category: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                BugLogger.info(TAG, "updateVideoCategory() — updating id=$id to category=$category")
+                repository.updateCategory(id, category)
+                BugLogger.info(TAG, "updateVideoCategory() — category updated successfully")
+            } catch (e: Exception) {
+                BugLogger.error(TAG, "updateVideoCategory() failed", e)
+                _error.value = e.message
+            }
+        }
+    }
+
     companion object { private const val TAG = "VideoViewModel" }
 }
 
