@@ -69,8 +69,8 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     kapt(libs.androidx.room.compiler)
 
-    // FFmpeg Kit
-    implementation("com.arthenica:ffmpeg-kit-full:6.0-2")
+    // Image loading
+    implementation("io.coil-kt.coil3:coil-compose:3.0.0-rc01")
 
     // Coroutines
     implementation(libs.kotlinx.coroutines.android)
