@@ -38,7 +38,7 @@ class SettingsRepository private constructor(private val context: Context) {
 
     val scanLimit: Flow<Float> = context.dataStore.data
         .map { preferences ->
-            preferences[SCAN_LIMIT] ?: 50f
+            preferences[SCAN_LIMIT] ?: 2000f
         }
 
     /** Emits the set of allowed folder (bucket) names. Empty = all folders. */

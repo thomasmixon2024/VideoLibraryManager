@@ -5,27 +5,75 @@ import android.provider.MediaStore
 import com.example.videolibrarymanager.data.VideoEntity
 import com.example.videolibrarymanager.util.BugLogger
 import com.example.videolibrarymanager.util.VideoMetadataHelper
+import java.io.File
 
 /**
- * VideoScanner — queries MediaStore for all video files on the device.
- * Optionally filters to a specific set of MediaStore bucket (folder) names.
+ * VideoScanner — two-pass scanner:
+ * Pass 1: MediaStore query (fast, covers most indexed files)
+ * Pass 2: File.walk() over all storage roots (catches unindexed files)
+ * Both passes deduplicate by absolute path.
  */
 class VideoScanner(private val context: Context) {
 
-    /**
-     * Returns video files found via MediaStore, optionally limited to [includedFolders].
-     * [includedFolders] — set of BUCKET_DISPLAY_NAME strings to allow.
-     *                      Empty set means "include all folders" (default, open filter).
-     * Requires READ_MEDIA_VIDEO (API 33+) or READ_EXTERNAL_STORAGE (≤ API 32).
-     */
+    companion object {
+        private const val TAG = "VideoScanner"
+
+        /** Every video container/codec extension we recognize. */
+        val VIDEO_EXTENSIONS = setOf(
+            // Common
+            "mp4", "mkv", "avi", "mov", "wmv", "flv", "webm", "m4v",
+            // Mobile / streaming
+            "3gp", "3g2", "ts", "mts", "m2ts",
+            // Less common but valid
+            "vob", "ogv", "ogm", "divx", "xvid", "rmvb", "rm",
+            "asf", "mpg", "mpeg", "mp2", "mpe", "mpv", "m2v",
+            "f4v", "f4p", "f4a", "f4b",
+            // Raw / professional
+            "mxf", "dv", "mod", "tod", "trp",
+            // Apple
+            "qt",
+            // Android screen record / misc
+            "amv", "nsv", "roq", "yuv"
+        )
+
+        /** Storage roots to walk in pass 2. */
+        private val STORAGE_ROOTS = listOf(
+            "/sdcard",
+            "/storage/emulated/0",
+            "/storage/self/primary"
+        )
+    }
+
     suspend fun scanAll(
-        limit: Int = 500,
+        limit: Int = 5000,
         includedFolders: Set<String> = emptySet()
     ): List<VideoEntity> {
-        val folderDesc = if (includedFolders.isEmpty()) "all" else includedFolders.joinToString()
-        BugLogger.debug(TAG, "scanAll() — limit=$limit folders=$folderDesc")
+        BugLogger.info(TAG, "scanAll() start — limit=$limit folders=${if (includedFolders.isEmpty()) "ALL" else includedFolders}")
+
+        val seen    = mutableSetOf<String>()   // dedup by path
         val results = mutableListOf<VideoEntity>()
 
+        // ── Pass 1: MediaStore ────────────────────────────────────────────
+        BugLogger.info(TAG, "Pass 1: MediaStore query")
+        mediaStoreScan(limit, includedFolders, seen, results)
+        BugLogger.info(TAG, "Pass 1 complete — ${results.size} found")
+
+        // ── Pass 2: File.walk() fallback ──────────────────────────────────
+        BugLogger.info(TAG, "Pass 2: File.walk() over storage roots")
+        fileWalkScan(limit, includedFolders, seen, results)
+        BugLogger.info(TAG, "Pass 2 complete — ${results.size} total found")
+
+        return results
+    }
+
+    // ── Pass 1: MediaStore ────────────────────────────────────────────────
+
+    private suspend fun mediaStoreScan(
+        limit: Int,
+        includedFolders: Set<String>,
+        seen: MutableSet<String>,
+        results: MutableList<VideoEntity>
+    ) {
         val projection = arrayOf(
             MediaStore.Video.Media._ID,
             MediaStore.Video.Media.DISPLAY_NAME,
@@ -37,87 +85,122 @@ class VideoScanner(private val context: Context) {
             MediaStore.Video.Media.HEIGHT,
             MediaStore.Video.Media.WIDTH,
         )
-
         try {
             context.contentResolver.query(
                 MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
-                projection,
-                null, null,
+                projection, null, null,
                 "${MediaStore.Video.Media.DATE_ADDED} DESC"
             )?.use { cursor ->
-                BugLogger.debug(TAG, "Cursor opened — columnCount=${cursor.columnCount}")
+                val idxName   = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DISPLAY_NAME)
+                val idxData   = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATA)
+                val idxDate   = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATE_ADDED)
+                val idxBucket = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.BUCKET_DISPLAY_NAME)
+                var skipped   = 0
 
-                val idxName     = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DISPLAY_NAME)
-                val idxData     = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATA)
-                val idxDate     = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATE_ADDED)
-                val idxBucket   = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.BUCKET_DISPLAY_NAME)
-
-                var skipped = 0
                 while (cursor.moveToNext() && results.size < limit) {
-                    val path = cursor.getString(idxData)
-                    if (path.isNullOrBlank()) {
-                        skipped++
-                        BugLogger.warn(TAG, "Row skipped — DATA column is null/blank (row ${cursor.position})")
-                        continue
-                    }
+                    val path = cursor.getString(idxData) ?: run { skipped++; continue }
+                    if (path.isBlank() || path in seen) { skipped++; continue }
 
-                    val name   = cursor.getString(idxName) ?: "Unknown"
                     val bucket = cursor.getString(idxBucket) ?: "Uncategorized"
+                    if (includedFolders.isNotEmpty() && bucket !in includedFolders) { skipped++; continue }
 
-                    // Apply folder filter — skip if bucket not in the allowed set
-                    if (includedFolders.isNotEmpty() && bucket !in includedFolders) {
-                        skipped++
-                        continue
-                    }
+                    seen += path
+                    val date = cursor.getLong(idxDate) * 1000L
+                    val name = cursor.getString(idxName) ?: File(path).name
 
-                    val date   = cursor.getLong(idxDate) * 1000L
-
-                    // Extract precise metadata natively. Do not compute checksum on every scan,
-                    // because it is expensive and not currently used by the app's workflows.
-                    val metadata = VideoMetadataHelper.processVideo(
-                        context,
-                        path,
-                        calculateChecksum = false
-                    )
-                    
-                    if (metadata != null) {
-                        results += VideoEntity(
-                            name       = name,
-                            path       = path,
-                            category   = bucket,
-                            duration   = metadata.durationMs,
-                            size       = java.io.File(path).length(),
-                            resolution = if (metadata.width > 0 && metadata.height > 0) "${metadata.width}x${metadata.height}" else "",
-                            dateAdded  = date,
-                            thumbnailPath = metadata.thumbnailPath,
-                            checksum   = metadata.checksum
-                        )
-                    } else {
-                        // Mark as corrupt if we couldn't process it
-                        results += VideoEntity(
-                            name       = name,
-                            path       = path,
-                            category   = bucket,
-                            isCorrupt  = true,
-                            errorMessage = "Failed to process native metadata"
-                        )
-                    }
+                    results += buildEntity(name, path, bucket, date)
                 }
-
-                BugLogger.info(TAG,
-                    "Cursor exhausted — found=${results.size} skipped=$skipped"
-                )
-            } ?: BugLogger.warn(TAG, "ContentResolver.query returned null cursor")
+                BugLogger.info(TAG, "MediaStore: ${results.size} added, $skipped skipped")
+            } ?: BugLogger.warn(TAG, "MediaStore query returned null cursor")
         } catch (e: SecurityException) {
-            BugLogger.error(TAG, "SecurityException querying MediaStore — missing permission?", e)
+            BugLogger.error(TAG, "SecurityException in MediaStore scan", e)
         } catch (e: Exception) {
-            BugLogger.error(TAG, "Unexpected error during MediaStore scan", e)
+            BugLogger.error(TAG, "Error in MediaStore scan", e)
         }
-
-        return results
     }
 
-    companion object {
-        private const val TAG = "VideoScanner"
+    // ── Pass 2: File.walk() ───────────────────────────────────────────────
+
+    private suspend fun fileWalkScan(
+        limit: Int,
+        includedFolders: Set<String>,
+        seen: MutableSet<String>,
+        results: MutableList<VideoEntity>
+    ) {
+        val roots = STORAGE_ROOTS.map { File(it) }
+            .filter { it.exists() && it.isDirectory }
+            .distinctBy { it.canonicalPath }
+
+        BugLogger.info(TAG, "File.walk roots: ${roots.map { it.path }}")
+
+        for (root in roots) {
+            if (results.size >= limit) break
+            try {
+                root.walkTopDown()
+                    .onEnter { dir ->
+                        // Skip hidden dirs and known junk paths
+                        !dir.name.startsWith(".") &&
+                        dir.name != "Android" &&
+                        dir.name != "data" &&
+                        dir.name != "obb"
+                    }
+                    .filter { it.isFile }
+                    .filter { it.extension.lowercase() in VIDEO_EXTENSIONS }
+                    .forEach { file ->
+                        if (results.size >= limit) return@forEach
+                        val path = file.absolutePath
+                        if (path in seen) return@forEach
+                        seen += path
+
+                        val bucket = file.parentFile?.name ?: "Uncategorized"
+                        if (includedFolders.isNotEmpty() && bucket !in includedFolders) return@forEach
+
+                        val date = file.lastModified()
+                        results += buildEntity(file.name, path, bucket, date)
+                        BugLogger.debug(TAG, "File.walk found: $path")
+                    }
+            } catch (e: SecurityException) {
+                BugLogger.warn(TAG, "SecurityException walking ${root.path}: ${e.message}")
+            } catch (e: Exception) {
+                BugLogger.error(TAG, "Error walking ${root.path}", e)
+            }
+        }
+    }
+
+    // ── Shared entity builder ─────────────────────────────────────────────
+
+    private suspend fun buildEntity(
+        name: String,
+        path: String,
+        bucket: String,
+        date: Long
+    ): VideoEntity {
+        val metadata = VideoMetadataHelper.processVideo(
+            context, path, calculateChecksum = false
+        )
+        return if (metadata != null) {
+            VideoEntity(
+                name          = name,
+                path          = path,
+                category      = bucket,
+                duration      = metadata.durationMs,
+                size          = File(path).length(),
+                resolution    = if (metadata.width > 0 && metadata.height > 0)
+                                    "${metadata.width}x${metadata.height}" else "",
+                dateAdded     = date,
+                thumbnailPath = metadata.thumbnailPath,
+                checksum      = metadata.checksum
+            )
+        } else {
+            VideoEntity(
+                name         = name,
+                path         = path,
+                category     = bucket,
+                dateAdded    = date,
+                size         = File(path).length(),
+                isCorrupt    = true,
+                errorMessage = "Metadata extraction failed"
+            )
+        }
     }
 }
