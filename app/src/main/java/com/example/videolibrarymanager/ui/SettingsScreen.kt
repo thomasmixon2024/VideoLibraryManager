@@ -25,6 +25,7 @@ fun SettingsScreen(
     settingsViewModel: SettingsViewModel,
     videoViewModel: VideoViewModel,
     onClearDatabase: () -> Unit,
+    onNavigateToLog: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val autoScanEnabled          by settingsViewModel.autoScanEnabled.collectAsStateWithLifecycle()
@@ -213,6 +214,17 @@ fun SettingsScreen(
         }
 
         item { HorizontalDivider() }
+
+        // ── Log viewer button
+        item {
+            Spacer(modifier = Modifier.height(8.dp))
+            OutlinedButton(
+                onClick = onNavigateToLog,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("View Run Log")
+            }
+        }
 
         // ── Danger zone ────────────────────────────────────────────────────
         item {

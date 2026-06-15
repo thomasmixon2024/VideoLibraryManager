@@ -4,6 +4,7 @@ import android.content.Context
 import android.provider.MediaStore
 import com.example.videolibrarymanager.data.VideoEntity
 import com.example.videolibrarymanager.util.BugLogger
+import com.example.videolibrarymanager.util.VideoMetadataHelper
 
 /**
  * VideoScanner — queries MediaStore for all video files on the device.
@@ -73,7 +74,7 @@ class VideoScanner(private val context: Context) {
 
                     // Extract precise metadata natively. Do not compute checksum on every scan,
                     // because it is expensive and not currently used by the app's workflows.
-                    val metadata = com.example.videolibrarymanager.util.VideoMetadataHelper.processVideo(
+                    val metadata = VideoMetadataHelper.processVideo(
                         context,
                         path,
                         calculateChecksum = false

@@ -11,6 +11,8 @@ import androidx.core.app.NotificationCompat
 import com.example.videolibrarymanager.data.VideoDatabase
 import com.example.videolibrarymanager.scanner.VideoScanner
 import com.example.videolibrarymanager.util.BugLogger
+import com.example.videolibrarymanager.data.SettingsRepository
+import com.example.videolibrarymanager.data.VideoRepository
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.first
 
@@ -49,9 +51,9 @@ class VideoScannerService : Service() {
         BugLogger.info(TAG, "─── Scan cycle started ───")
         try {
             val database = VideoDatabase.getDatabase(applicationContext)
-            val repository = com.example.videolibrarymanager.data.VideoRepository(database.videoDao())
+            val repository = VideoRepository(database.videoDao())
             val scanner = VideoScanner(applicationContext)
-            val settings = com.example.videolibrarymanager.data.SettingsRepository.getInstance(applicationContext)
+            val settings = SettingsRepository.getInstance(applicationContext)
 
             val autoScan = settings.autoScanEnabled.first()
             val skipCorrupt = settings.skipCorruptVideos.first()

@@ -1,6 +1,6 @@
 package com.example.videolibrarymanager.ui
 
-import androidx.compose.foundation.Image
+import coil3.compose.AsyncImage
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -20,7 +20,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil3.compose.rememberAsyncImagePainter
 import com.example.videolibrarymanager.data.VideoEntity
 import com.example.videolibrarymanager.util.Formatters
 import java.io.File
@@ -108,8 +107,8 @@ fun VideoResultRow(
                 contentAlignment = Alignment.Center
             ) {
                 if (video.thumbnailPath != null && File(video.thumbnailPath).exists()) {
-                    Image(
-                        painter = rememberAsyncImagePainter(model = File(video.thumbnailPath)),
+                    AsyncImage(
+                        model = File(video.thumbnailPath),
                         contentDescription = "Video Thumbnail Snapshot",
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize()

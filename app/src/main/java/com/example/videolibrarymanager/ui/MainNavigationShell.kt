@@ -11,11 +11,13 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.videolibrarymanager.ui.LogViewerScreen
 
 sealed class Screen(val route: String, val title: String, val icon: androidx.compose.ui.graphics.vector.ImageVector? = null) {
     object Home : Screen("home", "Catalog", Icons.Default.Home)
     object Search : Screen("search", "Search", Icons.Default.Search)
     object Settings : Screen("settings", "Settings", Icons.Default.Settings)
+    object LogViewer : Screen("log_viewer", "Log Viewer")
     object Player : Screen("player/{encodedPath}", "Player") {
         fun createRoute(path: String) = "player/${java.net.URLEncoder.encode(path, "UTF-8")}"
     }
@@ -93,6 +95,15 @@ fun MainNavigationShell(
                 VideoSearchScreen(viewModel = viewModel, onVideoClick = onVideoClick)
             }
             composable(Screen.Settings.route) {
+                SettingsScreen(
+                    settingsViewModel = settingsViewModel,
+                    videoViewModel    = viewModel,
+                    onClearDatabase   = onClearDatabase,
+                    onNavigateToLog   = { navController.navigate(Screen.LogViewer.route) }
+                )
+            }
+            composable(Screen.LogViewer.route) {
+                LogViewerScreen(onBack = { navController.popBackStack() })
                 SettingsScreen(
                     settingsViewModel = settingsViewModel,
                     videoViewModel    = viewModel,
