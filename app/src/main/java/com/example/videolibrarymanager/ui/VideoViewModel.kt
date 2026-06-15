@@ -7,6 +7,8 @@ import com.example.videolibrarymanager.data.VideoRepository
 import com.example.videolibrarymanager.util.BugLogger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.launch
 
 class VideoViewModel(
@@ -38,6 +40,7 @@ class VideoViewModel(
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
     val searchResults: StateFlow<List<VideoEntity>> = _searchQuery
         .debounce(300)
         .distinctUntilChanged()

@@ -103,7 +103,7 @@ class BugLoggerTest {
 
     @Test
     fun `logFile returns non-null file`() {
-        assertNotNull(BugLogger.logFile())
+        assertNotNull(BugLogger.logFile)
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
