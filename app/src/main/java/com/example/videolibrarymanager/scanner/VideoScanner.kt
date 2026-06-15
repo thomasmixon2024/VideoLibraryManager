@@ -7,36 +7,21 @@ import com.example.videolibrarymanager.util.BugLogger
 import com.example.videolibrarymanager.util.VideoMetadataHelper
 import java.io.File
 
-/**
- * VideoScanner — two-pass scanner:
- * Pass 1: MediaStore query (fast, covers most indexed files)
- * Pass 2: File.walk() over all storage roots (catches unindexed files)
- * Both passes deduplicate by absolute path.
- */
 class VideoScanner(private val context: Context) {
 
     companion object {
         private const val TAG = "VideoScanner"
 
-        /** Every video container/codec extension we recognize. */
         val VIDEO_EXTENSIONS = setOf(
-            // Common
             "mp4", "mkv", "avi", "mov", "wmv", "flv", "webm", "m4v",
-            // Mobile / streaming
             "3gp", "3g2", "ts", "mts", "m2ts",
-            // Less common but valid
             "vob", "ogv", "ogm", "divx", "xvid", "rmvb", "rm",
             "asf", "mpg", "mpeg", "mp2", "mpe", "mpv", "m2v",
             "f4v", "f4p", "f4a", "f4b",
-            // Raw / professional
             "mxf", "dv", "mod", "tod", "trp",
-            // Apple
-            "qt",
-            // Android screen record / misc
-            "amv", "nsv", "roq", "yuv"
+            "qt", "amv", "nsv", "roq", "yuv"
         )
 
-        /** Storage roots to walk in pass 2. */
         private val STORAGE_ROOTS = listOf(
             "/sdcard",
             "/storage/emulated/0",
@@ -50,23 +35,19 @@ class VideoScanner(private val context: Context) {
     ): List<VideoEntity> {
         BugLogger.info(TAG, "scanAll() start — limit=$limit folders=${if (includedFolders.isEmpty()) "ALL" else includedFolders}")
 
-        val seen    = mutableSetOf<String>()   // dedup by path
+        val seen    = mutableSetOf<String>()
         val results = mutableListOf<VideoEntity>()
 
-        // ── Pass 1: MediaStore ────────────────────────────────────────────
         BugLogger.info(TAG, "Pass 1: MediaStore query")
         mediaStoreScan(limit, includedFolders, seen, results)
         BugLogger.info(TAG, "Pass 1 complete — ${results.size} found")
 
-        // ── Pass 2: File.walk() fallback ──────────────────────────────────
         BugLogger.info(TAG, "Pass 2: File.walk() over storage roots")
         fileWalkScan(limit, includedFolders, seen, results)
         BugLogger.info(TAG, "Pass 2 complete — ${results.size} total found")
 
         return results
     }
-
-    // ── Pass 1: MediaStore ────────────────────────────────────────────────
 
     private suspend fun mediaStoreScan(
         limit: Int,
@@ -98,8 +79,8 @@ class VideoScanner(private val context: Context) {
                 var skipped   = 0
 
                 while (cursor.moveToNext() && results.size < limit) {
-                    val path = cursor.getString(idxData) ?: run { skipped++; continue }
-                    if (path.isBlank() || path in seen) { skipped++; continue }
+                    val path = cursor.getString(idxData)
+                    if (path.isNullOrBlank() || path in seen) { skipped++; continue }
 
                     val bucket = cursor.getString(idxBucket) ?: "Uncategorized"
                     if (includedFolders.isNotEmpty() && bucket !in includedFolders) { skipped++; continue }
@@ -107,7 +88,6 @@ class VideoScanner(private val context: Context) {
                     seen += path
                     val date = cursor.getLong(idxDate) * 1000L
                     val name = cursor.getString(idxName) ?: File(path).name
-
                     results += buildEntity(name, path, bucket, date)
                 }
                 BugLogger.info(TAG, "MediaStore: ${results.size} added, $skipped skipped")
@@ -118,8 +98,6 @@ class VideoScanner(private val context: Context) {
             BugLogger.error(TAG, "Error in MediaStore scan", e)
         }
     }
-
-    // ── Pass 2: File.walk() ───────────────────────────────────────────────
 
     private suspend fun fileWalkScan(
         limit: Int,
@@ -136,29 +114,29 @@ class VideoScanner(private val context: Context) {
         for (root in roots) {
             if (results.size >= limit) break
             try {
-                root.walkTopDown()
+                val files = root.walkTopDown()
                     .onEnter { dir ->
-                        // Skip hidden dirs and known junk paths
                         !dir.name.startsWith(".") &&
                         dir.name != "Android" &&
                         dir.name != "data" &&
                         dir.name != "obb"
                     }
-                    .filter { it.isFile }
-                    .filter { it.extension.lowercase() in VIDEO_EXTENSIONS }
-                    .forEach { file ->
-                        if (results.size >= limit) return@forEach
-                        val path = file.absolutePath
-                        if (path in seen) return@forEach
-                        seen += path
+                    .filter { it.isFile && it.extension.lowercase() in VIDEO_EXTENSIONS }
+                    .toList()
 
-                        val bucket = file.parentFile?.name ?: "Uncategorized"
-                        if (includedFolders.isNotEmpty() && bucket !in includedFolders) return@forEach
+                for (file in files) {
+                    if (results.size >= limit) break
+                    val path = file.absolutePath
+                    if (path in seen) continue
+                    seen += path
 
-                        val date = file.lastModified()
-                        results += buildEntity(file.name, path, bucket, date)
-                        BugLogger.debug(TAG, "File.walk found: $path")
-                    }
+                    val bucket = file.parentFile?.name ?: "Uncategorized"
+                    if (includedFolders.isNotEmpty() && bucket !in includedFolders) continue
+
+                    val date = file.lastModified()
+                    results += buildEntity(file.name, path, bucket, date)
+                    BugLogger.debug(TAG, "File.walk found: $path")
+                }
             } catch (e: SecurityException) {
                 BugLogger.warn(TAG, "SecurityException walking ${root.path}: ${e.message}")
             } catch (e: Exception) {
@@ -167,17 +145,13 @@ class VideoScanner(private val context: Context) {
         }
     }
 
-    // ── Shared entity builder ─────────────────────────────────────────────
-
     private suspend fun buildEntity(
         name: String,
         path: String,
         bucket: String,
         date: Long
     ): VideoEntity {
-        val metadata = VideoMetadataHelper.processVideo(
-            context, path, calculateChecksum = false
-        )
+        val metadata = VideoMetadataHelper.processVideo(context, path, calculateChecksum = false)
         return if (metadata != null) {
             VideoEntity(
                 name          = name,
