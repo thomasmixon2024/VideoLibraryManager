@@ -5,20 +5,20 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.example.videolibrarymanager.ui.LogViewerScreen
 
 sealed class Screen(val route: String, val title: String, val icon: androidx.compose.ui.graphics.vector.ImageVector? = null) {
-    object Home : Screen("home", "Catalog", Icons.Default.Home)
-    object Search : Screen("search", "Search", Icons.Default.Search)
-    object Settings : Screen("settings", "Settings", Icons.Default.Settings)
-    object LogViewer : Screen("log_viewer", "Log Viewer")
-    object Player : Screen("player/{encodedPath}", "Player") {
+    object Home      : Screen("home",       "Catalog",  Icons.Default.Home)
+    object Search    : Screen("search",     "Search",   Icons.Default.Search)
+    object Settings  : Screen("settings",   "Settings", Icons.Default.Settings)
+    object LogViewer : Screen("log_viewer", "Log",      Icons.Default.Terminal)
+    object Player    : Screen("player/{encodedPath}", "Player") {
         fun createRoute(path: String) = "player/${java.net.URLEncoder.encode(path, "UTF-8")}"
     }
 }
@@ -26,13 +26,13 @@ sealed class Screen(val route: String, val title: String, val icon: androidx.com
 @Composable
 fun MainNavigationShell(
     viewModel: VideoViewModel,
-    settingsViewModel: com.example.videolibrarymanager.ui.SettingsViewModel,
-    onClearDatabase: () -> Unit
+    settingsViewModel: SettingsViewModel,
+    onClearDatabase: () -> Unit,
+    onRescan: () -> Unit
 ) {
     val navController = rememberNavController()
     var currentRoute by remember { mutableStateOf(Screen.Home.route) }
 
-    // Synchronize current route on destination changes
     LaunchedEffect(navController) {
         navController.currentBackStackEntryFlow.collect { backStackEntry ->
             backStackEntry.destination.route?.let { currentRoute = it }
@@ -45,19 +45,19 @@ fun MainNavigationShell(
         bottomBar = {
             if (showBottomBar) {
                 NavigationBar {
-                    val items = listOf(Screen.Home, Screen.Search, Screen.Settings)
+                    val items = listOf(Screen.Home, Screen.Search, Screen.Settings, Screen.LogViewer)
                     items.forEach { screen ->
                         if (screen.icon != null) {
                             NavigationBarItem(
-                                icon = { Icon(screen.icon, contentDescription = screen.title) },
-                                label = { Text(screen.title) },
+                                icon     = { Icon(screen.icon, contentDescription = screen.title) },
+                                label    = { Text(screen.title) },
                                 selected = currentRoute == screen.route,
-                                onClick = {
+                                onClick  = {
                                     if (currentRoute != screen.route) {
                                         navController.navigate(screen.route) {
                                             popUpTo(navController.graph.startDestinationId) { saveState = true }
                                             launchSingleTop = true
-                                            restoreState = true
+                                            restoreState    = true
                                         }
                                     }
                                 }
@@ -69,9 +69,9 @@ fun MainNavigationShell(
         }
     ) { innerPadding ->
         NavHost(
-            navController = navController,
+            navController    = navController,
             startDestination = Screen.Home.route,
-            modifier = Modifier.padding(innerPadding)
+            modifier         = Modifier.padding(innerPadding)
         ) {
             val onVideoClick: (com.example.videolibrarymanager.data.VideoEntity) -> Unit = { video ->
                 navController.navigate(Screen.Player.createRoute(video.path)) {
@@ -81,13 +81,8 @@ fun MainNavigationShell(
 
             composable(Screen.Home.route) {
                 HomeScreen(
-                    viewModel            = viewModel,
-                    onNavigateToSettings = {
-                        navController.navigate(Screen.Settings.route) {
-                            launchSingleTop = true
-                            restoreState    = true
-                        }
-                    },
+                    viewModel    = viewModel,
+                    onRescan     = onRescan,
                     onVideoClick = onVideoClick
                 )
             }
@@ -98,26 +93,23 @@ fun MainNavigationShell(
                 SettingsScreen(
                     settingsViewModel = settingsViewModel,
                     videoViewModel    = viewModel,
-                    onClearDatabase   = onClearDatabase,
-                    onNavigateToLog   = { navController.navigate(Screen.LogViewer.route) }
+                    onClearDatabase   = onClearDatabase
                 )
             }
             composable(Screen.LogViewer.route) {
                 LogViewerScreen(onBack = { navController.popBackStack() })
-                SettingsScreen(
-                    settingsViewModel = settingsViewModel,
-                    videoViewModel    = viewModel,
-                    onClearDatabase   = onClearDatabase
-                )
             }
             composable(
-                route = Screen.Player.route,
-                arguments = listOf(androidx.navigation.navArgument("encodedPath") { type = androidx.navigation.NavType.StringType })
+                route     = Screen.Player.route,
+                arguments = listOf(androidx.navigation.navArgument("encodedPath") {
+                    type = androidx.navigation.NavType.StringType
+                })
             ) { backStackEntry ->
-                val path = backStackEntry.arguments?.getString("encodedPath")?.let { java.net.URLDecoder.decode(it, "UTF-8") }
+                val path = backStackEntry.arguments?.getString("encodedPath")
+                    ?.let { java.net.URLDecoder.decode(it, "UTF-8") }
                 if (path != null) {
                     VideoPlayerScreen(
-                        videoPath = path,
+                        videoPath    = path,
                         onNavigateUp = { navController.popBackStack() }
                     )
                 }
