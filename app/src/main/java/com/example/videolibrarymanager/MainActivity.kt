@@ -65,7 +65,8 @@ class MainActivity : ComponentActivity() {
                     MainNavigationShell(
                         viewModel = viewModel,
                         settingsViewModel = settingsViewModel,
-                        onClearDatabase = { viewModel.clearAllVideos() }
+                        onClearDatabase = { viewModel.clearAllVideos() },
+                        onRescan = { startVideoScanner() }
                     )
                 }
             }
