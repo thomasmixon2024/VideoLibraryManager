@@ -97,7 +97,7 @@ fun SettingsScreen(
                 Slider(
                     value = scanLimitSliderPosition,
                     onValueChange = { settingsViewModel.setScanLimit(it) },
-                    valueRange = 50f..2000f,
+                    valueRange = 50f..5000f,
                     steps = 39
                 )
             }
