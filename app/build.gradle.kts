@@ -70,11 +70,11 @@ dependencies {
     kapt(libs.androidx.room.compiler)
 
     // FFmpeg Kit
-    implementation("com.arthenica:ffmpeg-kit-full:6.0-2")
 
     // Coroutines
     implementation(libs.kotlinx.coroutines.android)
 
+    implementation("io.coil-kt:coil-compose:2.6.0")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
