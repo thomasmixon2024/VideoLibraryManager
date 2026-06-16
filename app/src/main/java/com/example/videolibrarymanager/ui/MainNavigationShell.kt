@@ -5,7 +5,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Terminal
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -17,7 +17,7 @@ sealed class Screen(val route: String, val title: String, val icon: androidx.com
     object Home      : Screen("home",       "Catalog",  Icons.Default.Home)
     object Search    : Screen("search",     "Search",   Icons.Default.Search)
     object Settings  : Screen("settings",   "Settings", Icons.Default.Settings)
-    object LogViewer : Screen("log_viewer", "Log",      Icons.Default.Terminal)
+    object LogViewer : Screen("log_viewer", "Log",      Icons.Default.List)
     object Player    : Screen("player/{encodedPath}", "Player") {
         fun createRoute(path: String) = "player/${java.net.URLEncoder.encode(path, "UTF-8")}"
     }
