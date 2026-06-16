@@ -45,6 +45,7 @@ object BugLogger {
             initialized = true
             appendRaw(buildSessionHeader())
             Log.i(SELF, "BugLogger → ${file.absolutePath}")
+            exportLog()
         }
     }
 
@@ -61,6 +62,15 @@ object BugLogger {
     fun getLogFile(): File? = logFile
 
     /** Erase and restart log. */
+    fun exportLog() {
+        try {
+            val dest = java.io.File("/storage/emulated/0/Download/VLM_texts/vlm_runlog.txt")
+            logFile?.copyTo(dest, overwrite = true)
+        } catch (e: Exception) {
+            Log.e(SELF, "Export failed: ${e.message}")
+        }
+    }
+
     fun clear() {
         logFile?.writeText("")
         appendRaw(buildSessionHeader())
