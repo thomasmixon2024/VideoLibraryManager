@@ -89,7 +89,11 @@ class MainActivity : ComponentActivity() {
         permissionLauncher.launch(perm)
     }
 
+    private var scannerStarted = false
+
     private fun startVideoScanner() {
+        if (scannerStarted) { BugLogger.debug(TAG, "Scanner already started, skipping."); return }
+        scannerStarted = true
         BugLogger.info(TAG, "Spawning VideoScannerService foreground service.")
         val intent = Intent(this, VideoScannerService::class.java)
         ContextCompat.startForegroundService(this, intent)
