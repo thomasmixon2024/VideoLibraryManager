@@ -1,63 +1,31 @@
-name: Android CI & Automatic Release Publisher
+name: Android Build
 
 on:
+  workflow_dispatch:
   push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
-
-permissions:
-  contents: write
+    branches:
+      - main
 
 jobs:
-  build-and-publish:
+  build:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout Repository Source Layout
-      uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Initialize Java Virtual Machine Env
-      uses: actions/setup-java@v4
-      with:
-        distribution: 'zulu'
-        java-version: '17'
-        cache: 'gradle'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
 
-    - name: Setup Android SDK Tools Context
-      uses: android-actions/setup-android@v3
+      - name: Make Gradle Executable
+        run: chmod +x gradlew
 
-    - name: Enforce Standard Cloud Properties
-      run: |
-        echo "android.useAndroidX=true" > gradle.properties
-        echo "org.gradle.daemon=false" >> gradle.properties
+      - name: Build APK
+        run: ./gradlew assembleDebug --stacktrace
 
-    - name: Grant Wrapper Execution Permissions
-      run: chmod +x gradlew
-
-    - name: Compile and Assemble Debug Production APK
-      run: ./gradlew assembleDebug --no-daemon
-
-    - name: Upload Build Artifact to Dashboard
-      uses: actions/upload-artifact@v4
-      with:
-        name: VideoLibraryManager-Debug-Build
-        path: app/build/outputs/apk/debug/app-debug.apk
-
-    - name: Automatically Publish Build Package to GitHub Releases
-      if: github.event_name == 'push'
-      uses: softprops/action-gh-release@v2
-      with:
-        files: app/build/outputs/apk/debug/app-debug.apk
-        tag_name: v1.0.${{ github.run_number }}
-        name: Continuous Release v1.0.${{ github.run_number }}
-        body: |
-          Automated continuous integration compilation run for Video Library Manager.
-          
-          **Execution Metrics:**
-          - Commit: `${{ github.sha }}`
-          - Build Instance ID: `${{ github.run_id }}`
-        draft: false
-        prerelease: false
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: VideoLibraryManager-debug
+          path: app/build/outputs/apk/debug/*.apk
