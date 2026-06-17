@@ -6,6 +6,8 @@ import com.example.videolibrarymanager.data.VideoEntity
 import com.example.videolibrarymanager.util.BugLogger
 import com.example.videolibrarymanager.util.VideoMetadataHelper
 import java.io.File
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class VideoScanner(private val context: Context) {
 
@@ -114,28 +116,43 @@ class VideoScanner(private val context: Context) {
         for (root in roots) {
             if (results.size >= limit) break
             try {
-                val files = root.walkTopDown()
-                    .onEnter { dir ->
-                        !dir.name.startsWith(".") &&
-                        dir.name != "Android" &&
-                        dir.name != "data" &&
-                        dir.name != "obb"
-                    }
-                    .filter { it.isFile && it.extension.lowercase() in VIDEO_EXTENSIONS }
-                    .toList()
-
-                for (file in files) {
-                    if (results.size >= limit) break
-                    val path = file.absolutePath
-                    if (path in seen) continue
-                    seen += path
-
-                    val bucket = file.parentFile?.name ?: "Uncategorized"
-                    if (includedFolders.isNotEmpty() && bucket !in includedFolders) continue
-
-                    val date = file.lastModified()
-                    results += buildEntity(file.name, path, bucket, date)
-                    BugLogger.debug(TAG, "File.walk found: $path")
+                withContext(Dispatchers.IO) {
+                    var visited = 0
+                    val startMs = System.currentTimeMillis()
+                    root.walkTopDown()
+                        .onEnter { dir ->
+                            !dir.name.startsWith(".") &&
+                            dir.name != "Android" &&
+                            dir.name != "data" &&
+                            dir.name != "obb" &&
+                            dir.name != "cache" &&
+                            dir.name != "Cache"
+                        }
+                        .forEach { file ->
+                            visited++
+                            if (visited % 500 == 0) {
+                                BugLogger.debug(
+                                    TAG,
+                                    "File.walk progress: ${root.path} — visited=$visited matched=${results.size} elapsed=${System.currentTimeMillis() - startMs}ms"
+                                )
+                            }
+                            if (results.size < limit && file.isFile && file.extension.lowercase() in VIDEO_EXTENSIONS) {
+                                val path = file.absolutePath
+                                if (path !in seen) {
+                                    seen += path
+                                    val bucket = file.parentFile?.name ?: "Uncategorized"
+                                    if (includedFolders.isEmpty() || bucket in includedFolders) {
+                                        val date = file.lastModified()
+                                        results += buildEntity(file.name, path, bucket, date)
+                                        BugLogger.debug(TAG, "File.walk found: $path")
+                                    }
+                                }
+                            }
+                        }
+                    BugLogger.info(
+                        TAG,
+                        "File.walk root done: ${root.path} — visited=$visited matched=${results.size} elapsed=${System.currentTimeMillis() - startMs}ms"
+                    )
                 }
             } catch (e: SecurityException) {
                 BugLogger.warn(TAG, "SecurityException walking ${root.path}: ${e.message}")
